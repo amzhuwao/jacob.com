@@ -1,0 +1,21 @@
+# Sensitive configuration files
+config/stripe.php
+config/database.php
+
+# Environment variables
+.env
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Temporary files
+*.log
+*.tmp
