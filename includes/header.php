@@ -10,25 +10,30 @@
 
 <body>
     <header>
-        <nav style="padding: 10px; background: #f4f4f4; margin-bottom: 20px;">
-            <?php if (isset($_SESSION['user_id'])): ?>
-                <a href="/dashboard/<?php echo $_SESSION['role']; ?>.php">Dashboard</a> |
+        <nav>
+            <div style="font-size: 1.5rem; font-weight: 700; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">
+                <a href="/index.php" style="text-decoration: none; color: inherit;">✨ Jacob</a>
+            </div>
+            <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+                <?php if (isset($_SESSION['user_id'])): ?>
+                    <a href="/dashboard/<?php echo $_SESSION['role']; ?>.php">Dashboard</a>
 
-                <?php if ($_SESSION['role'] === 'buyer'): ?>
-                    <a href="/dashboard/buyer_post_project.php">Post Project</a> |
+                    <?php if ($_SESSION['role'] === 'buyer'): ?>
+                        <a href="/dashboard/buyer_post_project.php">Post Project</a>
+                    <?php endif; ?>
+
+                    <?php if ($_SESSION['role'] === 'seller'): ?>
+                        <a href="/dashboard/seller.php">Browse Projects</a>
+                    <?php endif; ?>
+
+                    <span style="color: var(--gray);">Welcome, <?php echo htmlspecialchars($_SESSION['name']); ?>!</span>
+                    <a href="/auth/logout.php" class="btn btn-primary" style="padding: 0.5rem 1.5rem; font-size: 0.95rem;">Logout</a>
+                <?php else: ?>
+                    <a href="/index.php">Home</a>
+                    <a href="/auth/login.php">Login</a>
+                    <a href="/auth/register.php" class="btn btn-primary" style="padding: 0.5rem 1.5rem; font-size: 0.95rem;">Get Started</a>
                 <?php endif; ?>
-
-                <?php if ($_SESSION['role'] === 'seller'): ?>
-                    <a href="/dashboard/seller.php">Browse Projects</a> |
-                <?php endif; ?>
-
-                <span>Welcome, <?php echo htmlspecialchars($_SESSION['name']); ?></span> |
-                <a href="/auth/logout.php">Logout</a>
-            <?php else: ?>
-                <a href="/index.php">Home</a> |
-                <a href="/auth/login.php">Login</a> |
-                <a href="/auth/register.php">Register</a>
-            <?php endif; ?>
+            </div>
         </nav>
     </header>
     <main>
