@@ -22,14 +22,18 @@ $where = 'WHERE 1=1';
 $params = [];
 
 if ($search) {
-    $where .= ' AND (u.full_name LIKE ? OR u.email LIKE ?)';
+    $where .= ' AND (u.full_name LIKE :search_name OR u.email LIKE :search_email)';
     $like = "%{$search}%";
-    $params[] = $like;
-    $params[] = $like;
+    $params[':search_name'] = $like;
+    $params[':search_email'] = $like;
 }
 if ($roleFilter) {
-    $where .= ' AND u.role = ?';
-    $params[] = $roleFilter;
+    $where .= ' AND u.role = :role';
+    $params[':role'] = $roleFilter;
+}
+if ($statusFilter) {
+    $where .= ' AND u.status = :status';
+    $params[':status'] = $statusFilter;
 }
 
 // Count total
@@ -52,7 +56,7 @@ $dataSql = "SELECT u.*,
     LIMIT :limit OFFSET :offset";
 $dataStmt = $pdo->prepare($dataSql);
 foreach ($params as $key => $value) {
-    $dataStmt->bindValue($key + 1, $value);
+    $dataStmt->bindValue($key, $value);
 }
 $dataStmt->bindValue(':limit', $perPage, PDO::PARAM_INT);
 $dataStmt->bindValue(':offset', $offset, PDO::PARAM_INT);
@@ -67,9 +71,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $user = $pdo->prepare("SELECT * FROM users WHERE id = ?");
     $user->execute([$userId]);
     $userData = $user->fetch(PDO::FETCH_ASSOC);
+    if ($userData && !array_key_exists('kyc_verified', $userData)) {
+        $userData['kyc_verified'] = 0;
+    }
 
     if ($userData) {
-        $oldData = ['role' => $userData['role'], 'status' => $userData['status'], 'kyc_verified' => $userData['kyc_verified']];
+        $oldData = ['role' => $userData['role'], 'status' => $userData['status'], 'kyc_verified' => ($userData['kyc_verified'] ?? 0)];
 
         switch ($action) {
             case 'change_role':
@@ -153,7 +160,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // Reload users
         foreach ($params as $key => $value) {
-            $dataStmt->bindValue($key + 1, $value);
+            $dataStmt->bindValue($key, $value);
         }
         $dataStmt->bindValue(':limit', $perPage, PDO::PARAM_INT);
         $dataStmt->bindValue(':offset', $offset, PDO::PARAM_INT);
@@ -263,7 +270,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <thead class="table-light">
                                 <tr>
                                     <th>User ID</th>
-                                    <th>Username / Email</th>
+                                    <th>Name</th>
+                                    <th>Email</th>
                                     <th>Role</th>
                                     <th>Status</th>
                                     <th>KYC</th>
@@ -274,24 +282,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <tbody>
                                 <?php if (empty($users)): ?>
                                     <tr>
-                                        <td colspan="7" class="text-center py-4 text-muted">No users found</td>
+                                        <td colspan="8" class="text-center py-4 text-muted">No users found</td>
                                     </tr>
                                 <?php else: ?>
                                     <?php foreach ($users as $user): ?>
                                         <tr>
                                             <td><strong>#<?php echo $user['id']; ?></strong></td>
-                                            <td>
-                                                <div><strong><?php echo htmlspecialchars($user['full_name']); ?></strong></div>
-                                                <small style="color: #999;"><?php echo htmlspecialchars($user['email']); ?></small>
-                                            </td>
+                                            <td><strong><?php echo htmlspecialchars($user['full_name']); ?></strong></td>
+                                            <td><small style="color: #666;"><?php echo htmlspecialchars($user['email']); ?></small></td>
                                             <td><span style="background: #e3f2fd; color: #1976d2; padding: 4px 8px; border-radius: 4px; font-size: 0.85rem;"><?php echo ucfirst($user['role']); ?></span></td>
                                             <td>
-                                                <span style="background: <?php echo ($user['status'] ?? 'active') === 'active' ? '#d4edda' : (($user['status'] ?? 'active') === 'suspended' ? '#fff3cd' : '#f8d7da'); ?>; color: <?php echo ($user['status'] ?? 'active') === 'active' ? '#155724' : (($user['status'] ?? 'active') === 'suspended' ? '#856404' : '#721c24'); ?>; padding: 4px 8px; border-radius: 4px; font-size: 0.85rem;">
-                                                    <?php echo ucfirst($user['status'] ?? 'active'); ?>
+                                                <span style="background: <?php echo $user['status'] === 'active' ? '#d4edda' : ($user['status'] === 'suspended' ? '#fff3cd' : '#f8d7da'); ?>; color: <?php echo $user['status'] === 'active' ? '#155724' : ($user['status'] === 'suspended' ? '#856404' : '#721c24'); ?>; padding: 4px 8px; border-radius: 4px; font-size: 0.85rem;">
+                                                    <?php echo ucfirst($user['status']); ?>
                                                 </span>
                                             </td>
                                             <td>
-                                                <?php if ($user['kyc_verified']): ?>
+                                                <?php if (!empty($user['kyc_verified'])): ?>
                                                     <span style="background: #d4edda; color: #155724; padding: 4px 8px; border-radius: 4px; font-size: 0.85rem;">✓ Verified</span>
                                                 <?php else: ?>
                                                     <span style="background: #f8d7da; color: #721c24; padding: 4px 8px; border-radius: 4px; font-size: 0.85rem;">✗ Pending</span>
@@ -308,7 +314,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                                 </small>
                                             </td>
                                             <td style="font-size: 0.85rem;">
-                                                <button onclick="showUserModal(<?php echo $user['id']; ?>, '<?php echo htmlspecialchars($user['full_name'], ENT_QUOTES); ?>', '<?php echo $user['role']; ?>', '<?php echo $user['status']; ?>', <?php echo $user['kyc_verified'] ? 1 : 0; ?>)" class="btn btn-sm btn-primary">Manage</button>
+                                                <button onclick="showUserModal(<?php echo $user['id']; ?>, '<?php echo htmlspecialchars($user['full_name'], ENT_QUOTES); ?>', '<?php echo $user['role']; ?>', '<?php echo $user['status']; ?>', <?php echo !empty($user['kyc_verified']) ? 1 : 0; ?>)" class="btn btn-sm btn-primary">Manage</button>
                                             </td>
                                         </tr>
                                     <?php endforeach; ?>
@@ -341,44 +347,98 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
 
     <!-- User Action Modal -->
-    <div id="userModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center;">
-        <div style="background: white; padding: 2rem; border-radius: 1rem; width: 90%; max-width: 400px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);">
-            <h3 id="modalTitle" style="margin-top: 0; margin-bottom: 1rem;">Manage User</h3>
-            <form method="POST" id="userForm">
-                <input type="hidden" name="user_id" id="userId">
-                <input type="hidden" name="action" id="action">
+    <div id="userModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; justify-content: center; align-items: center;">
+        <div id="userModalContent" style="background: #f0f9ff; padding: 1.5rem; border-radius: 1rem; width: 92%; max-width: 520px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); border: 1px solid #e5e7eb;">
+            <h3 id="modalTitle" style="margin: 0 0 1rem;">Manage User</h3>
+            <div style="background: #ffffff; border: 1px solid #e5e7eb; border-radius: 0.75rem; padding: 1rem; margin-bottom: 0.75rem;">
+                <form method="POST" id="userForm">
+                    <input type="hidden" name="user_id" id="userId">
+                    <input type="hidden" name="action" id="action">
 
-                <div id="roleSection" class="mb-3">
-                    <label class="form-label"><strong>Change Role</strong></label>
-                    <select id="newRole" name="new_role" class="form-select">
-                        <option value="">-- Select new role --</option>
-                        <option value="admin">Admin</option>
-                        <option value="seller">Seller</option>
-                        <option value="buyer">Buyer</option>
-                    </select>
-                </div>
+                    <div id="roleSection" class="mb-3">
+                        <label class="form-label" style="color: #111;"><strong>Change Role</strong></label>
+                        <select id="newRole" name="new_role" class="form-select" style="width: 100%; background: #fff; color: #111; border: 1px solid #e5e7eb; border-radius: 0.5rem; padding: 0.5rem 0.75rem;">
+                            <option value="">-- Select new role --</option>
+                            <option value="admin">Admin</option>
+                            <option value="seller">Seller</option>
+                            <option value="buyer">Buyer</option>
+                        </select>
+                    </div>
 
-                <div style="display: flex; gap: 0.5rem;">
-                    <button type="button" onclick="submitAction('change_role')" class="btn btn-primary flex-1">Change Role</button>
-                    <button type="button" onclick="submitAction('suspend')" class="btn btn-warning flex-1">Suspend</button>
-                    <button type="button" onclick="submitAction('unsuspend')" class="btn btn-success flex-1">Reactivate</button>
-                    <button type="button" onclick="submitAction('ban')" class="btn btn-danger flex-1">Ban</button>
-                    <button type="button" onclick="submitAction('verify_kyc')" class="btn btn-info flex-1">Verify KYC</button>
-                </div>
-            </form>
-            <button onclick="closeModal()" class="btn btn-secondary w-100 mt-3">Close</button>
+                    <div id="actionButtons" style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+                        <button type="button" id="btnChangeRole" onclick="submitAction('change_role')" class="btn" style="flex: 1 1 48%; background-color: #0ea5e9; border-color: #0ea5e9; color: white;">Change Role</button>
+                        <button type="button" id="btnSuspend" onclick="submitAction('suspend')" class="btn" style="flex: 1 1 48%; background-color: #06b6d4; border-color: #06b6d4; color: white;">Suspend</button>
+                        <button type="button" id="btnUnsuspend" onclick="submitAction('unsuspend')" class="btn" style="flex: 1 1 48%; background-color: #0ea5e9; border-color: #0ea5e9; color: white;">Reactivate</button>
+                        <button type="button" id="btnBan" onclick="submitAction('ban')" class="btn" style="flex: 1 1 48%; background-color: #ef4444; border-color: #ef4444; color: white;">Ban</button>
+                        <button type="button" id="btnVerifyKyc" onclick="submitAction('verify_kyc')" class="btn" style="flex: 1 1 48%; background-color: #0ea5e9; border-color: #0ea5e9; color: white;">Verify KYC</button>
+                    </div>
+                </form>
+            </div>
+            <button onclick="closeModal()" class="btn" style="width: 100%; margin-top: 0.75rem; background-color: #6b7280; border-color: #6b7280; color: white;">Close</button>
         </div>
     </div>
 
+    <style>
+        /* Scoped styles for modal to ensure good contrast */
+        #userModalContent .form-label {
+            color: #111;
+        }
+
+        #userModalContent input[type="text"],
+        #userModalContent input[type="email"],
+        #userModalContent select,
+        #userModalContent textarea {
+            background: #fff;
+            color: #111;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.5rem;
+            padding: 0.5rem 0.75rem;
+        }
+
+        /* Increase spacing between table columns */
+        .table td,
+        .table th {
+            padding: 0.75rem 1.25rem;
+        }
+    </style>
+
     <script>
         function showUserModal(userId, username, role, status, kycVerified) {
+            const modal = document.getElementById('userModal');
+            const roleSelect = document.getElementById('newRole');
+
             document.getElementById('userId').value = userId;
             document.getElementById('modalTitle').textContent = `Manage User: ${username}`;
-            document.getElementById('userModal').style.display = 'flex';
+
+            // Preselect current role for convenience
+            if (roleSelect) {
+                roleSelect.value = role || '';
+            }
+
+            // Toggle action buttons based on current status/KYC
+            const isActive = status === 'active';
+            const isSuspended = status === 'suspended';
+            const isBanned = status === 'banned';
+
+            const btnSuspend = document.getElementById('btnSuspend');
+            const btnUnsuspend = document.getElementById('btnUnsuspend');
+            const btnBan = document.getElementById('btnBan');
+            const btnVerifyKyc = document.getElementById('btnVerifyKyc');
+
+            if (btnSuspend) btnSuspend.style.display = isActive ? 'inline-block' : 'none';
+            if (btnUnsuspend) btnUnsuspend.style.display = isSuspended ? 'inline-block' : 'none';
+            if (btnBan) btnBan.style.display = isBanned ? 'none' : 'inline-block';
+            if (btnVerifyKyc) btnVerifyKyc.style.display = kycVerified ? 'none' : 'inline-block';
+
+            // Show modal and lock scroll
+            modal.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
         }
 
         function closeModal() {
-            document.getElementById('userModal').style.display = 'none';
+            const modal = document.getElementById('userModal');
+            modal.style.display = 'none';
+            document.body.style.overflow = '';
         }
 
         function submitAction(action) {
@@ -389,6 +449,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             document.getElementById('userForm').submit();
         }
+
+        // Close modal when clicking outside content
+        (function() {
+            const overlay = document.getElementById('userModal');
+            const content = document.getElementById('userModalContent');
+            if (!overlay || !content) return;
+            overlay.addEventListener('click', function(e) {
+                if (!content.contains(e.target)) {
+                    closeModal();
+                }
+            });
+            // ESC to close
+            window.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape' && overlay.style.display === 'flex') {
+                    closeModal();
+                }
+            });
+        })();
     </script>
 
 </body>

@@ -83,18 +83,25 @@ $eligible = getEligibleEscrows($pdo);
 <body>
 
     <div class="dashboard-wrapper">
-        <!-- Sidebar -->
         <aside class="sidebar">
             <div class="sidebar-brand">
                 <span>✨</span>
                 <span>Jacob Admin</span>
             </div>
             <ul class="sidebar-nav">
-                <li><a href="/dashboard/admin_dashboard.php" class="active"><span>📊</span> <span>Dashboard</span></a></li>
+                <li><a href="/dashboard/admin_dashboard.php"><span>📊</span> <span>Dashboard</span></a></li>
+                <li><strong style="color: rgba(255,255,255,0.6); padding: 1rem; margin-top: 0.5rem; display: block; font-size: 0.85rem;">MANAGEMENT</strong></li>
+                <li><a href="/admin/users.php"><span>👥</span> <span>Users</span></a></li>
+                <li><a href="/admin/projects.php"><span>📦</span> <span>Projects</span></a></li>
                 <li><a href="/dashboard/admin_escrows.php"><span>📋</span> <span>Escrows</span></a></li>
+                <li><a href="/admin/disputes_list.php"><span>⚖️</span> <span>Disputes</span></a></li>
+                <li><strong style="color: rgba(255,255,255,0.6); padding: 1rem; margin-top: 0.5rem; display: block; font-size: 0.85rem;">FINANCIAL</strong></li>
+                <li><a href="/admin/financials.php"><span>💰</span> <span>Financials</span></a></li>
                 <li><a href="/dashboard/admin_dashboard.php#withdrawals"><span>💸</span> <span>Withdrawals</span></a></li>
-                <li><a href="/dashboard/admin_wallet_backfill.php"><span>🔄</span> <span>Wallet Backfill</span></a></li>
-                <li><a href="/disputes/index.php"><span>⚖️</span> <span>Disputes</span></a></li>
+                <li><a href="/dashboard/admin_wallet_backfill.php" class="active"><span>🔄</span> <span>Wallet Backfill</span></a></li>
+                <li><strong style="color: rgba(255,255,255,0.6); padding: 1rem; margin-top: 0.5rem; display: block; font-size: 0.85rem;">COMPLIANCE</strong></li>
+                <li><a href="/admin/audit_logs.php"><span>📝</span> <span>Audit Logs</span></a></li>
+                <li><a href="/admin/settings.php"><span>⚙️</span> <span>Settings</span></a></li>
             </ul>
             <div style="margin-top: auto; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1);">
                 <a href="/auth/logout.php" style="display: flex; align-items: center; gap: 1rem; color: rgba(255,255,255,0.7); text-decoration: none; padding: 0.75rem 1rem; border-radius: 0.75rem;">

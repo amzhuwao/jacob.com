@@ -1,5 +1,7 @@
 <?php
-
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
 // Admin disputes list with dashboard layout
 require_once '../config/database.php';
 require_once '../includes/auth.php';
@@ -20,7 +22,7 @@ if ($statusFilter !== 'all') {
     $params[] = $statusFilter;
 }
 if ($searchQuery !== '') {
-    $where .= ' AND (p.title LIKE ? OR u_opener.username LIKE ? OR CAST(d.id AS CHAR) LIKE ?)';
+    $where .= ' AND (p.title LIKE ? OR u_opener.full_name LIKE ? OR CAST(d.id AS CHAR) LIKE ?)';
     $like = "%{$searchQuery}%";
     $params[] = $like;
     $params[] = $like;
@@ -44,10 +46,10 @@ switch ($sortBy) {
 }
 
 $baseSelect = "
-    SELECT d.*, e.amount, p.title AS project_title,
-           u_opener.username AS opener_name,
-           u_buyer.username AS buyer_name,
-           u_seller.username AS seller_name,
+        SELECT d.*, e.amount, p.title AS project_title,
+            u_opener.full_name AS opener_name,
+            u_buyer.full_name AS buyer_name,
+            u_seller.full_name AS seller_name,
            COUNT(DISTINCT dm.id) AS message_count,
            COUNT(DISTINCT de.id) AS evidence_count
     FROM disputes d
@@ -113,10 +115,18 @@ foreach ($resStmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
             </div>
             <ul class="sidebar-nav">
                 <li><a href="/dashboard/admin_dashboard.php"><span>📊</span> <span>Dashboard</span></a></li>
+                <li><strong style="color: rgba(255,255,255,0.6); padding: 1rem; margin-top: 0.5rem; display: block; font-size: 0.85rem;">MANAGEMENT</strong></li>
+                <li><a href="/admin/users.php"><span>👥</span> <span>Users</span></a></li>
+                <li><a href="/admin/projects.php"><span>📦</span> <span>Projects</span></a></li>
                 <li><a href="/dashboard/admin_escrows.php"><span>📋</span> <span>Escrows</span></a></li>
+                <li><a href="/admin/disputes_list.php" class="active"><span>⚖️</span> <span>Disputes</span></a></li>
+                <li><strong style="color: rgba(255,255,255,0.6); padding: 1rem; margin-top: 0.5rem; display: block; font-size: 0.85rem;">FINANCIAL</strong></li>
+                <li><a href="/admin/financials.php"><span>💰</span> <span>Financials</span></a></li>
                 <li><a href="/dashboard/admin_dashboard.php#withdrawals"><span>💸</span> <span>Withdrawals</span></a></li>
                 <li><a href="/dashboard/admin_wallet_backfill.php"><span>🔄</span> <span>Wallet Backfill</span></a></li>
-                <li><a href="/admin/disputes_list.php" class="active"><span>⚖️</span> <span>Disputes</span></a></li>
+                <li><strong style="color: rgba(255,255,255,0.6); padding: 1rem; margin-top: 0.5rem; display: block; font-size: 0.85rem;">COMPLIANCE</strong></li>
+                <li><a href="/admin/audit_logs.php"><span>📝</span> <span>Audit Logs</span></a></li>
+                <li><a href="/admin/settings.php"><span>⚙️</span> <span>Settings</span></a></li>
             </ul>
             <div style="margin-top: auto; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1);">
                 <a href="/auth/logout.php" style="display: flex; align-items: center; gap: 1rem; color: rgba(255,255,255,0.7); text-decoration: none; padding: 0.75rem 1rem; border-radius: 0.75rem;">
@@ -160,11 +170,11 @@ foreach ($resStmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
                     </div>
                     <div class="kpi-card info">
                         <div class="kpi-label">Avg Amount</div>
-                        <div class="kpi-value">$<?php echo number_format($stats['avg_amount'], 0); ?></div>
+                        <div class="kpi-value">$<?php echo number_format((float)($stats['avg_amount'] ?? 0), 0); ?></div>
                     </div>
                     <div class="kpi-card warning">
                         <div class="kpi-label">Max Amount</div>
-                        <div class="kpi-value">$<?php echo number_format($stats['max_amount'], 0); ?></div>
+                        <div class="kpi-value">$<?php echo number_format((float)($stats['max_amount'] ?? 0), 0); ?></div>
                     </div>
                 </div>
 

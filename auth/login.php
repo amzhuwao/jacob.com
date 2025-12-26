@@ -27,7 +27,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Check user in database
         $conn = getDbConnection();
 
-        $stmt = $conn->prepare("SELECT id, full_name, password, role FROM users WHERE email = ?");
+        $stmt = $conn->prepare("SELECT id, full_name, password, role, status FROM users WHERE email = ?");
         $stmt->bind_param("s", $email);
         $stmt->execute();
         $result = $stmt->get_result();
@@ -37,15 +37,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             // Verify password
             if (password_verify($password, $user['password'])) {
-                // Password is correct, set session
-                $_SESSION['user_id'] = $user['id'];
-                $_SESSION['name'] = $user['full_name'];
-                $_SESSION['email'] = $email;
-                $_SESSION['role'] = $user['role'];
+                // Check account status
+                if ($user['status'] === 'suspended') {
+                    $errors[] = 'Your account has been suspended. Please contact support.';
+                } elseif ($user['status'] === 'banned') {
+                    $errors[] = 'Your account has been banned and cannot access the system.';
+                } elseif ($user['status'] === 'active') {
+                    // Password is correct and account is active, set session
+                    $_SESSION['user_id'] = $user['id'];
+                    $_SESSION['name'] = $user['full_name'];
+                    $_SESSION['email'] = $email;
+                    $_SESSION['role'] = $user['role'];
 
-                // Redirect to dashboard
-                header('Location: ../dashboard/' . $user['role'] . '.php');
-                exit();
+                    // Redirect to appropriate dashboard
+                    if ($user['role'] === 'admin') {
+                        header('Location: ../dashboard/admin_dashboard.php');
+                    } else {
+                        header('Location: ../dashboard/' . $user['role'] . '.php');
+                    }
+                    exit();
+                } else {
+                    $errors[] = 'Account status is unknown. Please contact support.';
+                }
             } else {
                 $errors[] = 'Invalid email or password';
             }

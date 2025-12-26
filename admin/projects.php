@@ -1,4 +1,7 @@
 <?php
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
 require_once '../includes/auth.php';
 require_once '../config/database.php';
 require_once '../services/AdminAuditService.php';
@@ -41,12 +44,21 @@ $offset = ($pageNum - 1) * $perPage;
 $dataSql = "SELECT p.*, 
            b.full_name as buyer_name, b.email as buyer_email,
            s.full_name as seller_name, s.email as seller_email,
-           (SELECT COUNT(*) FROM escrow WHERE project_id = p.id) as escrow_count,
-           (SELECT COUNT(*) FROM disputes WHERE project_id = p.id) as dispute_count,
-           (SELECT created_at FROM escrow WHERE project_id = p.id LIMIT 1) as escrow_created
+           (SELECT COUNT(*) FROM escrow e WHERE e.project_id = p.id) as escrow_count,
+           (SELECT COUNT(*) FROM disputes d JOIN escrow e ON d.escrow_id = e.id WHERE e.project_id = p.id) as dispute_count,
+           (SELECT created_at FROM escrow e WHERE e.project_id = p.id LIMIT 1) as escrow_created
     FROM projects p 
     JOIN users b ON p.buyer_id = b.id 
-    LEFT JOIN users s ON p.seller_id = s.id
+    LEFT JOIN (
+        SELECT e.project_id, e.seller_id
+        FROM escrow e
+        JOIN (
+            SELECT project_id, MAX(id) as max_id
+            FROM escrow
+            GROUP BY project_id
+        ) latest ON latest.project_id = e.project_id AND latest.max_id = e.id
+    ) es ON es.project_id = p.id
+    LEFT JOIN users s ON es.seller_id = s.id
     $where
     ORDER BY p.created_at DESC
     LIMIT :limit OFFSET :offset";
@@ -90,16 +102,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             case 'reassign_seller':
                 $newSellerId = (int)($_POST['new_seller_id'] ?? 0);
                 if ($newSellerId) {
-                    $oldData = ['seller_id' => $projectData['seller_id']];
-                    $stmt = $pdo->prepare("UPDATE projects SET seller_id = ? WHERE id = ?");
+                    $escrowSellerStmt = $pdo->prepare("SELECT seller_id FROM escrow WHERE project_id = ? ORDER BY id DESC LIMIT 1");
+                    $escrowSellerStmt->execute([$projectId]);
+                    $escrowRow = $escrowSellerStmt->fetch(PDO::FETCH_ASSOC);
+                    $oldSellerId = $escrowRow['seller_id'] ?? null;
+
+                    $stmt = $pdo->prepare("UPDATE escrow SET seller_id = ? WHERE project_id = ?");
                     $stmt->execute([$newSellerId, $projectId]);
+
                     $auditService->logAction(
                         $_SESSION['user_id'],
                         'reassign_seller',
                         'project',
                         $projectId,
-                        "Reassigned seller from {$projectData['seller_id']} to {$newSellerId}",
-                        $oldData,
+                        "Reassigned seller from {$oldSellerId} to {$newSellerId}",
+                        ['seller_id' => $oldSellerId],
                         ['seller_id' => $newSellerId]
                     );
                     $message = "✅ Seller reassigned";
@@ -132,6 +149,12 @@ $sellers = $sellerStmt->fetchAll(PDO::FETCH_ASSOC);
     <title>Project Management - Jacob Admin</title>
     <link rel="stylesheet" href="/assets/css/style.css">
     <link rel="stylesheet" href="/assets/css/dashboard.css">
+    <style>
+        .projects-table th,
+        .projects-table td {
+            padding: 0.9rem 1.2rem;
+        }
+    </style>
 </head>
 
 <body>
@@ -212,7 +235,7 @@ $sellers = $sellerStmt->fetchAll(PDO::FETCH_ASSOC);
                 <!-- Projects Table -->
                 <div style="background: white; padding: 0; border-radius: 1rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
                     <div class="table-responsive">
-                        <table class="table table-hover mb-0">
+                        <table class="table table-hover mb-0 projects-table">
                             <thead class="table-light">
                                 <tr>
                                     <th>Project ID</th>

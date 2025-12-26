@@ -1,4 +1,7 @@
 <?php
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
 require_once '../includes/auth.php';
 require_once '../config/database.php';
 require_once '../services/AdminAuditService.php';
@@ -63,13 +66,19 @@ $summary = $summaryStmt->fetch(PDO::FETCH_ASSOC);
 // Get seller wallet status
 $walletStmt = $pdo->query("
     SELECT 
-        u.id, u.full_name, u.email,
-        COALESCE(w.balance, 0) as balance,
-        COALESCE((SELECT COUNT(*) FROM wallet_transactions WHERE user_id = u.id AND status = 'pending'), 0) as pending_txns
-    FROM users u 
-    LEFT JOIN wallets w ON u.id = w.user_id 
+        u.id,
+        u.full_name,
+        u.email,
+        COALESCE(SUM(CASE 
+            WHEN wt.status = 'succeeded' AND wt.type LIKE 'credit%' THEN wt.amount
+            WHEN wt.status = 'succeeded' AND wt.type LIKE 'debit%' THEN -wt.amount
+            ELSE 0 END), 0) AS balance,
+        COALESCE(SUM(CASE WHEN wt.status = 'pending' THEN 1 ELSE 0 END), 0) AS pending_txns
+    FROM users u
+    LEFT JOIN wallet_transactions wt ON wt.user_id = u.id
     WHERE u.role = 'seller'
-    ORDER BY w.balance DESC
+    GROUP BY u.id, u.full_name, u.email
+    ORDER BY balance DESC
     LIMIT 20
 ");
 $sellers = $walletStmt->fetchAll(PDO::FETCH_ASSOC);
@@ -202,14 +211,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 <?php else: ?>
                                     <?php foreach ($sellers as $seller): ?>
                                         <tr>
-                                            <td><strong><?php echo htmlspecialchars($seller['username']); ?></strong></td>
-                                            <td><small><?php echo htmlspecialchars($seller['email']); ?></small></td>
-                                            <td><strong>$<?php echo number_format($seller['balance'], 2); ?></strong></td>
-                                            <td><span style="background: #cfe2ff; color: #084298; padding: 2px 8px; border-radius: 4px; font-size: 0.8rem;"><?php echo $seller['pending_txns']; ?></span></td>
+                                            <td><strong><?php echo htmlspecialchars($seller['full_name'] ?? 'Unknown'); ?></strong></td>
+                                            <td><small><?php echo htmlspecialchars($seller['email'] ?? ''); ?></small></td>
+                                            <td><strong>$<?php echo number_format((float)($seller['balance'] ?? 0), 2); ?></strong></td>
+                                            <td><span style="background: #cfe2ff; color: #084298; padding: 2px 8px; border-radius: 4px; font-size: 0.8rem;">#<?php echo (int)($seller['pending_txns'] ?? 0); ?></span></td>
                                             <td>
                                                 <form method="POST" style="display: inline;">
                                                     <input type="hidden" name="action" value="retry_payout">
-                                                    <input type="hidden" name="seller_id" value="<?php echo $seller['id']; ?>">
+                                                    <input type="hidden" name="seller_id" value="<?php echo (int)$seller['id']; ?>">
                                                     <button type="submit" class="btn btn-sm btn-primary">Payout</button>
                                                 </form>
                                             </td>

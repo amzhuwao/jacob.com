@@ -116,6 +116,11 @@ $commissionPct = $settingsService->getCommissionPercentage();
         .admin-nav-card.success {
             border-left-color: #198754;
         }
+
+        .admin-activity-table th,
+        .admin-activity-table td {
+            padding: 0.85rem 1.25rem;
+        }
     </style>
 </head>
 
@@ -345,7 +350,7 @@ $commissionPct = $settingsService->getCommissionPercentage();
                     <div style="background: white; padding: 1.5rem; border-radius: 1rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
                         <h3 style="margin-top: 0; margin-bottom: 1rem; color: #1a1a1a;">👀 Recent Admin Activity</h3>
                         <div class="table-responsive">
-                            <table class="table table-hover" style="font-size: 0.9rem;">
+                            <table class="table table-hover admin-activity-table" style="font-size: 0.9rem;">
                                 <thead style="background-color: #f0f0f0;">
                                     <tr>
                                         <th>Admin</th>
@@ -358,7 +363,15 @@ $commissionPct = $settingsService->getCommissionPercentage();
                                 <tbody>
                                     <?php foreach ($recentActivity as $activity): ?>
                                         <tr style="border-bottom: 1px solid #dee2e6;">
-                                            <td><?php echo htmlspecialchars($activity['username'] ?? 'Unknown'); ?></td>
+                                            <td>
+                                                <?php
+                                                $adminName = $activity['full_name'] ?? $activity['email'] ?? 'Unknown';
+                                                echo htmlspecialchars($adminName);
+                                                if (!empty($activity['admin_user_id'])) {
+                                                    echo '<br><small style="color: #666;">#' . (int)$activity['admin_user_id'] . '</small>';
+                                                }
+                                                ?>
+                                            </td>
                                             <td><code style="background: #f0f0f0; padding: 2px 6px; border-radius: 3px; font-size: 0.85rem;"><?php echo htmlspecialchars($activity['action']); ?></code></td>
                                             <td><?php echo htmlspecialchars($activity['entity_type']); ?> #<?php echo $activity['entity_id']; ?></td>
                                             <td><?php echo date('M d H:i', strtotime($activity['created_at'])); ?></td>
