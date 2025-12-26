@@ -37,6 +37,15 @@ if ($bid['project_status'] !== 'open') {
 try {
     $pdo->beginTransaction();
 
+    // Enforce: one escrow per project
+    $existingEscrow = $pdo->prepare("SELECT id FROM escrow WHERE project_id = ? LIMIT 1 FOR UPDATE");
+    $existingEscrow->execute([$bid['project_id']]);
+    if ($existingEscrow->fetch()) {
+        $pdo->rollBack();
+        header("Location: project_view.php?id=" . $bid['project_id']);
+        exit;
+    }
+
     // Reject other bids
     $reject = $pdo->prepare("UPDATE bids SET status = 'rejected' WHERE project_id = ?");
     $reject->execute([$bid['project_id']]);

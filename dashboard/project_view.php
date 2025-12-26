@@ -99,120 +99,619 @@ $escrow = $escrowStmt->fetch();
 <head>
     <title>Project View</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            padding: 20px;
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
 
-        .box {
-            border: 1px solid #ccc;
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .project-header {
+            background: white;
+            border-radius: 12px;
+            padding: 40px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .project-header h1 {
+            font-size: 2.5em;
+            color: #2d3748;
+            margin-bottom: 15px;
+            word-break: break-word;
+        }
+
+        .project-meta {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+
+        .meta-item {
             padding: 15px;
+            background: #f7fafc;
+            border-left: 4px solid #667eea;
+            border-radius: 6px;
+        }
+
+        .meta-item label {
+            display: block;
+            font-size: 0.9em;
+            color: #718096;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .meta-item .value {
+            font-size: 1.3em;
+            font-weight: 600;
+            color: #2d3748;
+        }
+
+        .budget-tag {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 600;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .status-open {
+            background: #c6f6d5;
+            color: #22543d;
+        }
+
+        .status-in-progress {
+            background: #bee3f8;
+            color: #2c5282;
+        }
+
+        .status-completed {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .description-section {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .description-section h2 {
+            font-size: 1.5em;
+            color: #2d3748;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        .description-text {
+            color: #4a5568;
+            line-height: 1.8;
+            font-size: 1.05em;
+        }
+
+        .grid-2col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+
+        @media (max-width: 1024px) {
+            .grid-2col {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .sidebar-cards-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar-cards-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Bid Form Styles */
+        .bid-form-section {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .bid-form-section h3 {
+            font-size: 1.5em;
+            color: #2d3748;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        .form-group {
             margin-bottom: 20px;
         }
 
-        .bid {
-            background: #f9f9f9;
-            padding: 10px;
-            margin-bottom: 10px;
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 8px;
         }
 
-        .accepted {
-            background: #d4edda;
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 1em;
+            transition: all 0.3s ease;
         }
 
-        .rejected {
-            background: #f8d7da;
+        .form-group input:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .form-group textarea {
+            min-height: 120px;
+            resize: vertical;
+        }
+
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #e2e8f0;
+            color: #2d3748;
+        }
+
+        .btn-secondary:hover {
+            background: #cbd5e0;
+            transform: translateY(-2px);
+        }
+
+        /* Bids Section */
+        .bids-section {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .bids-section h3 {
+            font-size: 1.5em;
+            color: #2d3748;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        .bid-card {
+            padding: 20px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            transition: all 0.3s ease;
+        }
+
+        .bid-card:hover {
+            border-color: #667eea;
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.1);
+        }
+
+        .bid-card.pending {
+            border-left: 5px solid #f6ad55;
+        }
+
+        .bid-card.accepted {
+            border-left: 5px solid #48bb78;
+            background: #f0fff4;
+        }
+
+        .bid-card.rejected {
+            border-left: 5px solid #f56565;
+            background: #fff5f5;
+        }
+
+        .bid-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .bid-seller-name {
+            font-size: 1.2em;
+            font-weight: 700;
+            color: #2d3748;
+        }
+
+        .bid-amount {
+            font-size: 1.4em;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .bid-message {
+            color: #4a5568;
+            margin-bottom: 15px;
+            line-height: 1.6;
+            padding: 15px;
+            background: rgba(226, 232, 240, 0.3);
+            border-radius: 6px;
+        }
+
+        .bid-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .bid-actions a {
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-weight: 600;
+            text-decoration: none;
+            font-size: 0.95em;
+            transition: all 0.3s ease;
+        }
+
+        .bid-accept {
+            background: #c6f6d5;
+            color: #22543d;
+        }
+
+        .bid-accept:hover {
+            background: #9ae6b4;
+        }
+
+        .bid-status {
+            color: #718096;
+            font-size: 0.95em;
+            font-style: italic;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #718096;
+        }
+
+        .empty-state-icon {
+            font-size: 3em;
+            margin-bottom: 15px;
+        }
+
+        /* Escrow Section */
+        .escrow-section {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .escrow-section h3 {
+            font-size: 1.5em;
+            color: #2d3748;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        .escrow-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+
+        .escrow-item {
+            padding: 15px;
+            background: #f7fafc;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+
+        .escrow-item label {
+            display: block;
+            font-size: 0.85em;
+            color: #718096;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .escrow-item .value {
+            font-size: 1.3em;
+            font-weight: 700;
+            color: #2d3748;
+        }
+
+        .no-bids {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 40px 20px;
+            color: #718096;
+            font-style: italic;
+        }
+
+        .back-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 24px;
+            background: rgba(255, 255, 255, 0.9);
+            color: #2d3748;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .back-button:hover {
+            background: white;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .back-button::before {
+            content: '←';
+            font-size: 1.2em;
         }
     </style>
 </head>
 
 <body>
+    <div class="container">
+        <!-- BACK BUTTON -->
+        <a href="<?= $_SESSION['role'] === 'buyer' ? 'buyer.php' : 'seller.php' ?>" class="back-button">Back to Dashboard</a>
 
-    <!-- -----------------------------
-     PROJECT DETAILS
--------------------------------->
-    <div class="box">
-        <h2><?= htmlspecialchars($project['title']) ?></h2>
-        <p><strong>Client:</strong> <?= htmlspecialchars($project['buyer_name']) ?></p>
-        <p><?= nl2br(htmlspecialchars($project['description'])) ?></p>
-        <p><strong>Budget:</strong> $<?= $project['budget'] ?></p>
-        <p><strong>Status:</strong> <?= $project['status'] ?></p>
-    </div>
+        <!-- PROJECT HEADER -->
+        <div class="project-header">
+            <h1><?= htmlspecialchars($project['title']) ?></h1>
 
-    <!-- -----------------------------
-     SELLER BID FORM
--------------------------------->
-    <?php if ($_SESSION['role'] === 'seller' && $project['status'] === 'open'): ?>
-        <div class="box">
-            <h3>Submit a Bid</h3>
-            <form method="POST">
-                <input type="number" name="amount" step="0.01" placeholder="Bid amount" required><br><br>
-                <textarea name="message" placeholder="Optional message"></textarea><br><br>
-                <button type="submit">Submit Bid</button>
-            </form>
-        </div>
-    <?php endif; ?>
-
-    <!-- -----------------------------
-     BUYER VIEW BIDS
--------------------------------->
-    <?php if ($_SESSION['role'] === 'buyer'): ?>
-        <div class="box">
-            <h3>Bids Received</h3>
-
-            <?php if (empty($bids)): ?>
-                <p>No bids yet.</p>
-            <?php endif; ?>
-
-            <?php foreach ($bids as $bid): ?>
-                <div class="bid <?= $bid['status'] ?>">
-                    <strong><?= htmlspecialchars($bid['full_name']) ?></strong><br>
-                    Amount: $<?= $bid['amount'] ?><br>
-                    <?= nl2br(htmlspecialchars($bid['message'])) ?><br><br>
-
-                    <?php if ($bid['status'] === 'pending' && $project['status'] === 'open'): ?>
-                        <a href="accept_bid.php?bid_id=<?= $bid['id'] ?>">Accept Bid</a>
-                    <?php else: ?>
-                        <em>Status: <?= ucfirst($bid['status']) ?></em>
-                    <?php endif; ?>
+            <div class="project-meta">
+                <div class="meta-item">
+                    <label>Client</label>
+                    <div class="value"><?= htmlspecialchars($project['buyer_name']) ?></div>
                 </div>
-            <?php endforeach; ?>
+                <div class="meta-item">
+                    <label>Budget</label>
+                    <div class="value"><span class="budget-tag">$<?= number_format($project['budget'], 2) ?></span></div>
+                </div>
+                <div class="meta-item">
+                    <label>Status</label>
+                    <div class="value"><span class="status-badge status-<?= str_replace(' ', '-', strtolower($project['status'])) ?>"><?= ucfirst($project['status']) ?></span></div>
+                </div>
+            </div>
         </div>
-    <?php endif;
 
+        <!-- PROJECT DESCRIPTION -->
+        <div class="description-section">
+            <h2>📋 Project Details</h2>
+            <div class="description-text">
+                <?= nl2br(htmlspecialchars($project['description'])) ?>
+            </div>
+        </div>
 
-    $stmt = $pdo->prepare(
-        "SELECT * FROM escrow WHERE project_id = ?"
-    );
-    $stmt->execute([$project_id]);
-    $escrow = $stmt->fetch();
-    ?>
+        <!-- MAIN CONTENT GRID -->
+        <div class="grid-2col">
+            <div>
+                <!-- SELLER BID FORM -->
+                <?php if ($_SESSION['role'] === 'seller' && $project['status'] === 'open'): ?>
+                    <div class="bid-form-section">
+                        <h3>💼 Submit Your Bid</h3>
+                        <form method="POST">
+                            <div class="form-group">
+                                <label for="amount">Bid Amount (USD)</label>
+                                <input type="number" id="amount" name="amount" step="0.01" placeholder="Enter your bid amount" required>
+                            </div>
 
-    <?php if ($_SESSION['role'] === 'buyer' && $escrow && $escrow['status'] === 'pending'): ?>
-        <div class="box">
-            <h3>Fund Escrow</h3>
-            <p>Amount: $<?= $escrow['amount'] ?></p>
-            <form method="POST" action="fund_escrow.php">
-                <input type="hidden" name="escrow_id" value="<?= $escrow['id'] ?>">
-                <button type="submit">Fund Escrow (Prototype)</button>
-            </form>
+                            <div class="form-group">
+                                <label for="message">Cover Letter (Optional)</label>
+                                <textarea id="message" name="message" placeholder="Tell the client why you're the best fit for this project..."></textarea>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary">Submit Bid</button>
+                        </form>
+                    </div>
+                <?php endif; ?>
+
+                <!-- BUYER VIEW BIDS -->
+                <?php if ($_SESSION['role'] === 'buyer'): ?>
+                    <div class="bids-section">
+                        <h3>💰 Bids Received (<?= count($bids) ?>)</h3>
+
+                        <?php if (empty($bids)): ?>
+                            <div class="empty-state">
+                                <div class="empty-state-icon">📭</div>
+                                <p>No bids yet. Check back later or share your project for more visibility.</p>
+                            </div>
+                        <?php else: ?>
+                            <?php foreach ($bids as $bid): ?>
+                                <div class="bid-card <?= $bid['status'] ?>">
+                                    <div class="bid-header">
+                                        <div class="bid-seller-name">👤 <?= htmlspecialchars($bid['full_name']) ?></div>
+                                        <div class="bid-amount">$<?= number_format($bid['amount'], 2) ?></div>
+                                    </div>
+
+                                    <?php if (!empty($bid['message'])): ?>
+                                        <div class="bid-message">
+                                            <?= nl2br(htmlspecialchars($bid['message'])) ?>
+                                        </div>
+                                    <?php endif; ?>
+
+                                    <div class="bid-actions">
+                                        <?php if ($bid['status'] === 'pending' && $project['status'] === 'open'): ?>
+                                            <a href="accept_bid.php?bid_id=<?= $bid['id'] ?>" class="btn bid-accept">✓ Accept Bid</a>
+                                        <?php else: ?>
+                                            <span class="bid-status">Status: <?= ucfirst($bid['status']) ?></span>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </div>
+                <?php endif; ?>
+
+                <!-- ACCEPTED BID CARD -->
+                <?php if ($acceptedBid): ?>
+                    <div class="escrow-section">
+                        <h3>✅ Accepted Bid</h3>
+                        <div class="escrow-info">
+                            <div class="escrow-item" style="grid-column: 1 / -1;">
+                                <label>Seller</label>
+                                <div class="value"><?= htmlspecialchars($acceptedBid['seller_name']) ?></div>
+                            </div>
+                            <div class="escrow-item" style="grid-column: 1 / -1;">
+                                <label>Amount</label>
+                                <div class="value">$<?= number_format($acceptedBid['amount'], 2) ?></div>
+                            </div>
+                            <div class="escrow-item" style="grid-column: 1 / -1;">
+                                <label>Status</label>
+                                <div class="value status-badge status-<?= str_replace(' ', '-', strtolower($acceptedBid['status'])) ?>"><?= ucfirst($acceptedBid['status']) ?></div>
+                            </div>
+                        </div>
+                    </div>
+                <?php endif; ?>
+            </div>
+
+            <!-- RIGHT COLUMN: ESCROW STATUS -->
+            <div>
+                <?php if ($_SESSION['role'] === 'seller' && $escrow): ?>
+                    <div class="escrow-section">
+                        <h3>🔒 Escrow Status</h3>
+                        <div class="escrow-info">
+                            <div class="escrow-item" style="grid-column: 1 / -1;">
+                                <label>Status</label>
+                                <div class="value status-badge status-<?= str_replace(' ', '-', strtolower($escrow['status'])) ?>" style="<?= $escrow['status'] === 'disputed' ? 'background-color: #ff6b6b;' : '' ?>"><?= ucfirst($escrow['status']) ?></div>
+                            </div>
+                            <div class="escrow-item" style="grid-column: 1 / -1;">
+                                <label>Amount</label>
+                                <div class="value">$<?= number_format($escrow['amount'], 2) ?></div>
+                            </div>
+                        </div>
+                        <?php if ($escrow['status'] === 'disputed'): ?>
+                            <p style="margin-top: 15px; padding: 10px; background-color: #ffe0e0; border-radius: 5px; font-size: 0.9rem; color: #c92a2a;">
+                                <i class="fas fa-exclamation-triangle"></i> This transaction is in dispute. Check the dispute details for resolution.
+                            </p>
+                            <a href="/disputes/open_dispute.php" class="btn btn-warning" style="width: 100%; margin-top: 10px;">
+                                <i class="fas fa-folder-open"></i> View/Manage Dispute
+                            </a>
+                        <?php endif; ?>
+                    </div>
+                <?php endif; ?>
+
+                <?php if ($_SESSION['role'] === 'buyer' && $escrow && $escrow['status'] === 'pending'): ?>
+                    <div class="escrow-section" style="margin-top: 30px;">
+                        <h3>🔒 Fund Escrow</h3>
+                        <div class="escrow-info">
+                            <div class="escrow-item" style="grid-column: 1 / -1;">
+                                <label>Escrow Amount</label>
+                                <div class="value">$<?= number_format($escrow['amount'], 2) ?></div>
+                            </div>
+                        </div>
+                        <form method="POST" action="fund_escrow.php">
+                            <input type="hidden" name="escrow_id" value="<?= $escrow['id'] ?>">
+                            <button type="submit" class="btn btn-primary" style="width: 100%;">Fund Escrow Now</button>
+                        </form>
+                    </div>
+                <?php endif; ?>
+
+                <?php if ($escrow && $escrow['status'] === 'disputed'): ?>
+                    <div class="escrow-section" style="margin-top: 30px; border: 2px solid #ffc107;">
+                        <h3 style="color: #ff6b6b;">⚠️ Dispute Open</h3>
+                        <div class="escrow-info">
+                            <div class="escrow-item" style="grid-column: 1 / -1;">
+                                <label>Status</label>
+                                <div class="value" style="color: #ff6b6b; font-weight: bold;">Disputed - Awaiting Resolution</div>
+                            </div>
+                            <div class="escrow-item" style="grid-column: 1 / -1;">
+                                <label>Amount</label>
+                                <div class="value">$<?= number_format($escrow['amount'], 2) ?></div>
+                            </div>
+                        </div>
+                        <?php
+                        // Get any open disputes for this escrow
+                        $disputeStmt = $pdo->prepare("SELECT id FROM disputes WHERE escrow_id = ? AND status = 'open' LIMIT 1");
+                        $disputeStmt->execute([$escrow['id']]);
+                        $dispute = $disputeStmt->fetch();
+                        ?>
+                        <div style="display: flex; gap: 10px; margin-top: 15px;">
+                            <?php if ($dispute): ?>
+                                <a href="/disputes/dispute_view.php?id=<?= $dispute['id'] ?>" class="btn btn-warning" style="flex: 1;">
+                                    <i class="fas fa-folder-open"></i> View Dispute
+                                </a>
+                            <?php else: ?>
+                                <a href="/disputes/open_dispute.php" class="btn btn-danger" style="flex: 1;">
+                                    <i class="fas fa-exclamation-circle"></i> Open Dispute
+                                </a>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                <?php endif; ?>
+            </div>
         </div>
-    <?php endif; ?>
-    <?php if ($acceptedBid): ?>
-        <div class="box">
-            <h3>Accepted Bid</h3>
-            <p><strong>Seller:</strong> <?= htmlspecialchars($acceptedBid['seller_name']) ?></p>
-            <p><strong>Amount:</strong> $<?= $acceptedBid['amount'] ?></p>
-            <p><strong>Status:</strong> <?= $acceptedBid['status'] ?></p>
-        </div>
-    <?php endif; ?>
-    <?php if ($_SESSION['role'] === 'seller' && $escrow): ?>
-        <div class="box">
-            <h3>Escrow Status</h3>
-            <p>Status: <?= ucfirst($escrow['status']) ?></p>
-            <p>Amount: $<?= $escrow['amount'] ?></p>
-        </div>
-    <?php endif; ?>
 
 </body>
 

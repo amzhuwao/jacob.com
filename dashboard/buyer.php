@@ -86,6 +86,7 @@ $favorites = $favoriteStmt->fetchAll();
                 <li><a href="#pipeline"><span>🔄</span> <span>Pipeline</span></a></li>
                 <li><a href="#spending"><span>💸</span> <span>Spending</span></a></li>
                 <li><a href="#favorites"><span>⭐</span> <span>Favorites</span></a></li>
+                <li><a href="/disputes/open_dispute.php"><span>⚖️</span> <span>Disputes</span></a></li>
             </ul>
             <div style="margin-top: auto; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1);">
                 <a href="/auth/logout.php" style="display: flex; align-items: center; gap: 1rem; color: rgba(255,255,255,0.7); text-decoration: none; padding: 0.75rem 1rem; border-radius: 0.75rem;">

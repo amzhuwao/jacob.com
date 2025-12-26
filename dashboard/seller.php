@@ -24,9 +24,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
 
     if (!empty($fullName)) {
         $updateStmt = $pdo->prepare(
-            "UPDATE users SET full_name = ? WHERE id = ?"
+            "UPDATE users SET 
+                full_name = ?,
+                tagline = ?,
+                bio = ?,
+                skills = ?,
+                availability = ?
+             WHERE id = ?"
         );
-        $updateStmt->execute([$fullName, $userId]);
+        $updateStmt->execute([$fullName, $tagline, $bio, $skills, $availability, $userId]);
         $_SESSION['name'] = $fullName;
         $success = "Profile updated successfully!";
     }
@@ -80,8 +86,17 @@ $earningsStmt = $pdo->prepare(
 $earningsStmt->execute([$userId]);
 $totalEarnings = $earningsStmt->fetch()['total'] ?? 0;
 
-// Response rate (simplified)
-$responseRate = 95; // Would be calculated from actual response data
+// Response Rate - Calculate from bids (last 30 days)
+$responseStmt = $pdo->prepare(
+    "SELECT 
+        ROUND(COALESCE(COUNT(CASE WHEN responded_at IS NOT NULL THEN 1 END), 0) / 
+              NULLIF(COUNT(*), 0) * 100, 0) as response_rate
+     FROM bids 
+     WHERE seller_id = ? 
+     AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)"
+);
+$responseStmt->execute([$userId]);
+$responseRate = (int)($responseStmt->fetch()['response_rate'] ?? 0);
 
 // Open bids (opportunities)
 $opportunitiesStmt = $pdo->prepare(
@@ -127,21 +142,68 @@ $statsStmt = $pdo->prepare(
 $statsStmt->execute([$userId]);
 $stats = $statsStmt->fetch();
 
+// Get real reviews from database
+$reviewsStmt = $pdo->prepare(
+    "SELECT sr.*, u.full_name 
+     FROM seller_reviews sr
+     JOIN users u ON sr.buyer_id = u.id
+     WHERE sr.seller_id = ?
+     ORDER BY sr.created_at DESC
+     LIMIT 10"
+);
+$reviewsStmt->execute([$userId]);
+$reviews = $reviewsStmt->fetchAll();
+
 // Calculate profile completion
 $profileFields = [
     'full_name' => !empty($profile['full_name']),
     'email' => !empty($profile['email']),
-    'bio' => false,
-    'skills' => false,
+    'bio' => !empty($profile['bio']),
+    'skills' => !empty($profile['skills']),
     'portfolio' => false
 ];
 $completedFields = count(array_filter($profileFields));
 $totalFields = count($profileFields);
 $profileCompletion = round(($completedFields / $totalFields) * 100);
 
-// Mock data for demonstration
-$profileViews = 247;
-$avgResponseTime = "2 hours";
+// Get real profile views from users table
+$profileViewsStmt = $pdo->prepare("SELECT profile_views FROM users WHERE id = ?");
+$profileViewsStmt->execute([$userId]);
+$profileViews = $profileViewsStmt->fetch()['profile_views'] ?? 0;
+
+// Get real average response time
+$avgTimeStmt = $pdo->prepare(
+    "SELECT 
+        ROUND(AVG(TIMESTAMPDIFF(MINUTE, created_at, responded_at)), 0) as avg_minutes
+     FROM bids 
+     WHERE seller_id = ? AND responded_at IS NOT NULL"
+);
+$avgTimeStmt->execute([$userId]);
+$avgMinutes = $avgTimeStmt->fetch()['avg_minutes'] ?? 0;
+
+// Convert minutes to readable format
+if ($avgMinutes == 0) {
+    $avgResponseTime = "No data yet";
+} elseif ($avgMinutes < 60) {
+    $avgResponseTime = round($avgMinutes) . " minutes";
+} elseif ($avgMinutes < 1440) {
+    $avgResponseTime = round($avgMinutes / 60, 1) . " hours";
+} else {
+    $avgResponseTime = round($avgMinutes / 1440, 1) . " days";
+}
+
+// Get real average rating and total reviews
+$ratingStmt = $pdo->prepare(
+    "SELECT 
+        ROUND(AVG(rating), 1) as avg_rating, 
+        COUNT(*) as total_reviews
+     FROM seller_reviews 
+     WHERE seller_id = ?"
+);
+$ratingStmt->execute([$userId]);
+$ratingData = $ratingStmt->fetch();
+$avgRating = $ratingData['avg_rating'] ?? 0;
+$totalReviews = $ratingData['total_reviews'] ?? 0;
 ?>
 
 <!DOCTYPE html>
@@ -169,6 +231,7 @@ $avgResponseTime = "2 hours";
                 <li><a href="#opportunities" onclick="showDashboardView()"><span>💼</span> <span>Opportunities</span></a></li>
                 <li><a href="#active" onclick="showDashboardView()"><span>⚡</span> <span>Active Orders</span></a></li>
                 <li><a href="#earnings" onclick="showDashboardView()"><span>💰</span> <span>Earnings</span></a></li>
+                <li><a href="/disputes/open_dispute.php"><span>⚖️</span> <span>Disputes</span></a></li>
                 <li><a href="#profile" onclick="showProfileView()"><span>⭐</span> <span>Profile</span></a></li>
             </ul>
             <div style="margin-top: auto; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1);">
@@ -569,33 +632,49 @@ $avgResponseTime = "2 hours";
                         <div id="profile-tab-reviews" class="profile-tab-content" style="display: none;">
                             <h2 class="profile-section-heading">Client Reviews</h2>
 
-                            <div class="review-card-display">
-                                <div class="review-header-section">
-                                    <div>
-                                        <div class="review-author-name">John Smith</div>
-                                        <div class="review-rating-stars">⭐⭐⭐⭐⭐</div>
-                                    </div>
-                                    <small style="color: var(--gray);">2 days ago</small>
+                            <?php if (empty($reviews)): ?>
+                                <div style="text-align: center; padding: 2rem; color: var(--gray);">
+                                    <div style="font-size: 3rem; margin-bottom: 1rem;">📭</div>
+                                    <p>No reviews yet. Complete projects to get your first review!</p>
                                 </div>
-                                <div class="review-text-content">
-                                    Excellent work! Very professional and delivered on time. Will definitely hire again.
-                                </div>
-                                <button class="action-btn primary">💬 Reply to Review</button>
-                            </div>
+                            <?php else: ?>
+                                <?php foreach ($reviews as $review): ?>
+                                    <div class="review-card-display">
+                                        <div class="review-header-section">
+                                            <div>
+                                                <div class="review-author-name">
+                                                    <?php echo htmlspecialchars($review['full_name']); ?>
+                                                </div>
+                                                <div class="review-rating-stars">
+                                                    <?php echo str_repeat('⭐', $review['rating']); ?>
+                                                </div>
+                                            </div>
+                                            <small style="color: var(--gray);">
+                                                <?php echo date('M j, Y', strtotime($review['created_at'])); ?>
+                                            </small>
+                                        </div>
+                                        <div class="review-text-content">
+                                            <?php echo htmlspecialchars($review['review_text']); ?>
+                                        </div>
 
-                            <div class="review-card-display">
-                                <div class="review-header-section">
-                                    <div>
-                                        <div class="review-author-name">Sarah Johnson</div>
-                                        <div class="review-rating-stars">⭐⭐⭐⭐⭐</div>
+                                        <?php if (!empty($review['reply_text'])): ?>
+                                            <div style="background: var(--light); padding: 1rem; border-radius: 0.5rem; margin-top: 1rem; border-left: 3px solid var(--primary);">
+                                                <div style="font-weight: 600; margin-bottom: 0.5rem;">Your Reply:</div>
+                                                <div style="color: var(--gray);">
+                                                    <?php echo htmlspecialchars($review['reply_text']); ?>
+                                                </div>
+                                                <small style="color: #999;">
+                                                    <?php echo date('M j, Y', strtotime($review['replied_at'])); ?>
+                                                </small>
+                                            </div>
+                                        <?php else: ?>
+                                            <button class="action-btn primary" onclick="alert('Reply functionality coming soon')">
+                                                💬 Reply to Review
+                                            </button>
+                                        <?php endif; ?>
                                     </div>
-                                    <small style="color: var(--gray);">1 week ago</small>
-                                </div>
-                                <div class="review-text-content">
-                                    Amazing communication and quality work. Highly recommended!
-                                </div>
-                                <button class="action-btn primary">💬 Reply to Review</button>
-                            </div>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
                         </div>
 
                         <!-- Settings Tab -->
@@ -613,25 +692,25 @@ $avgResponseTime = "2 hours";
 
                                 <div class="form-group-profile">
                                     <label class="form-label-profile">Professional Tagline</label>
-                                    <input type="text" name="tagline" class="form-input-profile" placeholder="e.g., Award-winning Designer with 8+ years experience">
+                                    <input type="text" name="tagline" class="form-input-profile" placeholder="e.g., Award-winning Designer with 8+ years experience" value="<?php echo htmlspecialchars($profile['tagline'] ?? ''); ?>">
                                 </div>
 
                                 <div class="form-group-profile">
                                     <label class="form-label-profile">Bio</label>
-                                    <textarea name="bio" class="form-input-profile form-textarea-profile" placeholder="Tell buyers about your experience and expertise..."></textarea>
+                                    <textarea name="bio" class="form-input-profile form-textarea-profile" placeholder="Tell buyers about your experience and expertise..."><?php echo htmlspecialchars($profile['bio'] ?? ''); ?></textarea>
                                 </div>
 
                                 <div class="form-group-profile">
                                     <label class="form-label-profile">Skills (comma-separated)</label>
-                                    <input type="text" name="skills" class="form-input-profile" placeholder="e.g., PHP, JavaScript, React, Node.js">
+                                    <input type="text" name="skills" class="form-input-profile" placeholder="e.g., PHP, JavaScript, React, Node.js" value="<?php echo htmlspecialchars($profile['skills'] ?? ''); ?>">
                                 </div>
 
                                 <div class="form-group-profile">
                                     <label class="form-label-profile">Availability Status</label>
                                     <select name="availability" class="form-input-profile">
-                                        <option value="available">🟢 Available Now</option>
-                                        <option value="busy">🟡 Busy (Limited Availability)</option>
-                                        <option value="away">🔴 Out of Office</option>
+                                        <option value="available" <?php echo ($profile['availability'] ?? '') === 'available' ? 'selected' : ''; ?>>🟢 Available Now</option>
+                                        <option value="busy" <?php echo ($profile['availability'] ?? '') === 'busy' ? 'selected' : ''; ?>>🟡 Busy (Limited Availability)</option>
+                                        <option value="away" <?php echo ($profile['availability'] ?? '') === 'away' ? 'selected' : ''; ?>>🔴 Out of Office</option>
                                     </select>
                                 </div>
 

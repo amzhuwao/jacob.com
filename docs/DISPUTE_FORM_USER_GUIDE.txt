@@ -1,0 +1,267 @@
+# Dispute Form - Quick User Guide
+
+## Visual Walkthrough
+
+### Step 1: Select Transaction
+```
+┌─────────────────────────────────────┐
+│ 📝 Open a Dispute                   │
+│ Fill in the details below...        │
+├─────────────────────────────────────┤
+│ [Step 1] Select Transaction         │
+│                                     │
+│ Which escrow are you disputing? ▼   │
+│ ┌──────────────────────────────┐   │
+│ │ Project: Website Design      │   │
+│ │ Amount: $2,500               │   │
+│ │ [You are Buyer]              │   │
+│ └──────────────────────────────┘   │
+│                                     │
+│ 💡 Only disputed escrows shown      │
+└─────────────────────────────────────┘
+```
+
+### Step 1 Complete: Summary Appears
+```
+┌──────────────────────────────────────┐
+│ ℹ️  Transaction Summary              │
+├──────────────────────────────────────┤
+│ Project: Website Design              │
+│ Amount: $2,500.00                    │
+│ Buyer: You (john_buyer)              │
+│ Seller: Jane Smith (jane_dev)        │
+└──────────────────────────────────────┘
+```
+
+---
+
+### Step 2: Describe the Issue
+```
+┌──────────────────────────────────────┐
+│ [Step 2] Describe the Issue          │
+│                                      │
+│ Quick Template (Optional)            │
+│ ┌──────────────────────────────────┐│
+│ │ -- Select a common reason --    ││
+│ │ 💰 Partial refund not received  ││
+│ │ 📦 Work not delivered as agreed ││
+│ │ ⚠️  Quality issues with project  ││
+│ │ ❌ Deliverables incomplete      ││
+│ │ 📧 Communication issues         ││
+│ │ 💳 Payment not released         ││
+│ │ ✏️  Custom reason (type below)   ││
+│ └──────────────────────────────────┘│
+│                                      │
+│ Detailed Explanation                 │
+│ ┌──────────────────────────────────┐│
+│ │ I received 70% of the work done, ││
+│ │ but no refund has been issued... ││
+│ │                                   ││
+│ │ [45 characters | 50+ recommended]││
+│ └──────────────────────────────────┘│
+└──────────────────────────────────────┘
+```
+
+---
+
+### Step 3: Upload Evidence
+```
+┌──────────────────────────────────────┐
+│ [Step 3] Upload Evidence (Optional)  │
+│                                      │
+│ Supporting Files                     │
+│ [Choose Files]  📎                   │
+│                                      │
+│ Files to upload:                     │
+│ ✓ screenshot.png (1.23MB)            │
+│ ✓ contract.pdf (2.45MB)              │
+│ ⚠️  video.mp4 (100MB) - Too large   │
+│                                      │
+│ Accepted: JPG, PNG, GIF, PDF, Word   │
+│ Max 5MB per file, up to 5 files      │
+└──────────────────────────────────────┘
+```
+
+---
+
+### Form Validation
+```
+⚠️  Select a transaction • Provide at least 20 characters
+
+[Cancel]                    [Preview & Confirm]
+                           (button enabled when valid)
+```
+
+---
+
+### Preview Modal (Before Submit)
+```
+╔════════════════════════════════════════╗
+║ ✅ Confirm Dispute Submission          ║
+╠════════════════════════════════════════╣
+║                                        ║
+║ Transaction                            ║
+║ ├─ Project: Website Design             ║
+║ ├─ Amount: $2,500.00                   ║
+║ └─ Your Role: [Buyer]                  ║
+║                                        ║
+║ Dispute Details                        ║
+║ Reason: I received 70% of the work...  ║
+║         [full text shown]              ║
+║                                        ║
+║ Evidence Files                         ║
+║ • screenshot.png (1.23MB)              ║
+║ • contract.pdf (2.45MB)                ║
+║                                        ║
+║ ℹ️  Admin will review within 24-48h    ║
+║                                        ║
+╠════════════════════════════════════════╣
+║ [Edit]                    [Submit]     ║
+╚════════════════════════════════════════╝
+```
+
+---
+
+## Key Features at a Glance
+
+### 🎯 Escrow Summary
+- Confirms you're disputing the RIGHT transaction
+- Shows amount, project, buyer/seller names
+- Appears automatically when you select
+
+### 📋 Quick Templates
+- Don't know what to say? Pick a template
+- 6 common dispute reasons pre-written
+- Or write your own custom reason
+- Character counter: "50+ recommended"
+
+### 📎 File Upload
+- Upload evidence files (images, PDFs, documents)
+- Up to 5 files, max 5MB each
+- See file preview before submission
+- Real-time validation with warnings
+
+### 👁️ Preview Before Submit
+- Modal shows everything exactly as admin will see it
+- Final chance to review
+- Prevents accidental submissions
+- Shows upload timeline: "24-48 hours"
+
+### ✅ Real-Time Validation
+- "Preview & Confirm" button only enabled when ready
+- Clear error messages if something missing
+- Shows which fields need attention
+
+---
+
+## Common Questions
+
+### Q: Why do I need to select the escrow?
+A: Confirms you're disputing the RIGHT transaction. Prevents mistakes!
+
+### Q: Can I edit after submitting?
+A: You can add messages and evidence after opening the dispute through the dispute view page.
+
+### Q: How long until admin reviews?
+A: Usually 24-48 hours. You'll see updates in your dispute page.
+
+### Q: What files can I upload?
+A: Images (JPG, PNG, GIF), PDFs, Word documents, TXT files. Max 5MB each.
+
+### Q: Can I upload videos?
+A: Not yet. Use screenshots or describe video content in your message instead.
+
+### Q: What if I make a mistake?
+A: You can add follow-up messages to clarify before admin resolution.
+
+### Q: How many files can I upload now?
+A: 5 files maximum during dispute creation. Add more evidence later if needed.
+
+---
+
+## Tips for Faster Resolution
+
+### ✅ Do's
+- ✓ Be specific and detailed in description
+- ✓ Upload supporting documentation
+- ✓ Include relevant dates/timelines
+- ✓ Reference previous communications
+- ✓ Explain impact clearly
+
+### ❌ Don'ts
+- ✗ Keep description too short (admin needs context)
+- ✗ Use ALL CAPS (appears like shouting)
+- ✗ Upload blurry/unreadable images
+- ✗ Include personal attacks
+- ✗ Try to upload non-allowed file types
+
+---
+
+## What Happens Next
+
+1. **You Submit** → Goes to dispute view page
+2. **Evidence Attached** → Files show in evidence section
+3. **Admin Notified** → Appears in admin dashboard
+4. **Admin Reviews** → Within 24-48 hours typically
+5. **Messages & Evidence** → Admin can see everything
+6. **Resolution** → Admin makes decision (refund/release/split)
+7. **You're Notified** → Status changes, you see outcome
+
+---
+
+## Technical Details
+
+### Storage
+- Files stored securely: `/uploads/dispute_evidence/`
+- Secure filenames: `dispute_1_timestamp_random.ext`
+- Original filename preserved in database
+- Linked to your dispute ID automatically
+
+### Validation
+- Server checks file type (MIME validation)
+- Enforces 5MB limit
+- Prevents executable files
+- Complete audit trail maintained
+
+### Privacy
+- Only you, the other party, and admin can see evidence
+- Not visible publicly
+- Encrypted transmission recommended (HTTPS)
+- Database backed up regularly
+
+---
+
+## Troubleshooting
+
+### "File too large" error
+- Your file exceeds 5MB
+- Solution: Compress the file or use smaller version
+- For images: Take screenshot instead of full recording
+
+### "File type not allowed" error
+- You tried uploading unsupported format
+- Solution: Convert to PDF or JPG
+- Allowed: JPG, PNG, GIF, PDF, DOC, DOCX, TXT
+
+### "Form says error" on submit
+- Check browser console (F12 → Console)
+- May be file or CSRF token issue
+- Refresh page and try again
+- Contact support if persists
+
+### Can't see preview button
+- Likely missing escrow selection or short description
+- Solution: Select escrow and write 20+ characters
+- Button will enable automatically
+
+### Modal won't open
+- Try refreshing the page
+- Check browser console for errors
+- Make sure JavaScript enabled
+- Try different browser if issue persists
+
+---
+
+**Last Updated:** December 18, 2025  
+**Ready for Users:** YES ✅
+
