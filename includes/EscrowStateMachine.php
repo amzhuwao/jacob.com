@@ -164,6 +164,7 @@ class EscrowStateMachine
     {
         $map = [
             'funded' => 'in_progress',
+            'release_requested' => 'completed',
             'released' => 'completed',
             'refunded' => 'canceled',
             'canceled' => 'open',

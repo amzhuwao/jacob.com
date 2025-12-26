@@ -4,6 +4,7 @@ ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 require_once "../includes/auth.php";
 require_once "../config/database.php";
+require_once "../services/WalletService.php";
 
 if ($_SESSION['role'] !== 'seller') {
     die("Access denied");
@@ -13,6 +14,18 @@ if ($_SESSION['role'] !== 'seller') {
 $userId = $_SESSION['user_id'];
 $success = '';
 $errors = [];
+
+// Get wallet balance
+try {
+    $walletService = new WalletService($pdo);
+    $wallet = $walletService->getWallet($userId);
+    $walletBalance = $wallet['balance'] ?? 0;
+    $pendingBalance = $wallet['pending_balance'] ?? 0;
+} catch (Exception $e) {
+    error_log("Wallet error: " . $e->getMessage());
+    $walletBalance = 0;
+    $pendingBalance = 0;
+}
 
 // Handle profile update
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
@@ -112,7 +125,7 @@ $opportunities = $opportunitiesStmt->fetchAll();
 
 // Active orders
 $ordersStmt = $pdo->prepare(
-    "SELECT p.*, b.amount, u.full_name, e.status as escrow_status
+    "SELECT p.*, b.amount, u.full_name, e.status as escrow_status, e.work_delivered_at, e.buyer_approved_at
      FROM projects p
      JOIN bids b ON p.id = b.project_id
      JOIN users u ON p.buyer_id = u.id
@@ -230,7 +243,8 @@ $totalReviews = $ratingData['total_reviews'] ?? 0;
                 <li><a href="#dashboard" onclick="showDashboardView()" class="active"><span>📊</span> <span>Dashboard</span></a></li>
                 <li><a href="#opportunities" onclick="showDashboardView()"><span>💼</span> <span>Opportunities</span></a></li>
                 <li><a href="#active" onclick="showDashboardView()"><span>⚡</span> <span>Active Orders</span></a></li>
-                <li><a href="#earnings" onclick="showDashboardView()"><span>💰</span> <span>Earnings</span></a></li>
+                <li><a href="seller_wallet.php"><span>💰</span> <span>My Wallet</span></a></li>
+                <li><a href="#earnings" onclick="showDashboardView()"><span>💸</span> <span>Earnings</span></a></li>
                 <li><a href="/disputes/open_dispute.php"><span>⚖️</span> <span>Disputes</span></a></li>
                 <li><a href="#profile" onclick="showProfileView()"><span>⭐</span> <span>Profile</span></a></li>
             </ul>
@@ -274,16 +288,22 @@ $totalReviews = $ratingData['total_reviews'] ?? 0;
                         <div class="kpi-subtext">Projects in progress</div>
                     </div>
 
-                    <div class="kpi-card warning">
-                        <div class="kpi-label">⏰ Upcoming Deadline</div>
-                        <div class="kpi-value">3d</div>
-                        <div class="kpi-subtext">Next deliverable due</div>
+                    <div class="kpi-card primary" style="cursor: pointer;" onclick="window.location.href='seller_wallet.php'">
+                        <div class="kpi-label">💰 Wallet Balance</div>
+                        <div class="kpi-value">$<?php echo number_format($walletBalance, 2); ?></div>
+                        <div class="kpi-subtext">
+                            <?php if ($pendingBalance > 0): ?>
+                                $<?php echo number_format($pendingBalance, 2); ?> pending
+                            <?php else: ?>
+                                Click to withdraw
+                            <?php endif; ?>
+                        </div>
                     </div>
 
-                    <div class="kpi-card success">
-                        <div class="kpi-label">💰 Available Balance</div>
+                    <div class="kpi-card info">
+                        <div class="kpi-label">💸 Total Earnings</div>
                         <div class="kpi-value">$<?php echo number_format($totalEarnings, 0); ?></div>
-                        <div class="kpi-subtext">Ready to withdraw</div>
+                        <div class="kpi-subtext">All time revenue</div>
                     </div>
 
                     <div class="kpi-card">
@@ -416,6 +436,23 @@ $totalReviews = $ratingData['total_reviews'] ?? 0;
                                         <span class="meta-value"><?php echo ucfirst($order['escrow_status'] ?? 'pending'); ?></span>
                                     </div>
                                 </div>
+
+                                <!-- Delivery Status for Seller -->
+                                <?php if ($order['escrow_status'] === 'funded'): ?>
+                                    <?php if ($order['buyer_approved_at']): ?>
+                                        <div style="margin: 0.75rem 0; padding: 0.75rem; background: rgba(16, 185, 129, 0.15); border-left: 3px solid #10b981; border-radius: 0.5rem; font-size: 0.85rem; color: #059669;">
+                                            ✓ Work Approved - Funds Releasing
+                                        </div>
+                                    <?php elseif ($order['work_delivered_at']): ?>
+                                        <div style="margin: 0.75rem 0; padding: 0.75rem; background: rgba(245, 158, 11, 0.15); border-left: 3px solid #f59e0b; border-radius: 0.5rem; font-size: 0.85rem; color: #d97706;">
+                                            ⏳ Awaiting Buyer Approval
+                                        </div>
+                                    <?php else: ?>
+                                        <div style="margin: 0.75rem 0; padding: 0.75rem; background: rgba(59, 130, 246, 0.1); border-left: 3px solid #3b82f6; border-radius: 0.5rem; font-size: 0.85rem; color: #1e40af;">
+                                            📦 Ready to Mark as Delivered
+                                        </div>
+                                    <?php endif; ?>
+                                <?php endif; ?>
 
                                 <div class="project-actions">
                                     <button class="action-btn">💬 Message</button>

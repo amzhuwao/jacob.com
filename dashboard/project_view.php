@@ -678,40 +678,197 @@ $escrow = $escrowStmt->fetch();
                     </div>
                 <?php endif; ?>
 
-                <?php if ($escrow && $escrow['status'] === 'disputed'): ?>
-                    <div class="escrow-section" style="margin-top: 30px; border: 2px solid #ffc107;">
-                        <h3 style="color: #ff6b6b;">⚠️ Dispute Open</h3>
+                <!-- Workflow: Work Delivery & Approval -->
+                <?php if ($escrow && $escrow['status'] === 'funded' && !in_array($escrow['status'], ['released', 'refunded'])): ?>
+                    <div class="escrow-section" style="margin-top: 30px; border: 2px solid #667eea;">
+                        <h3>📦 Work Delivery & Approval</h3>
                         <div class="escrow-info">
                             <div class="escrow-item" style="grid-column: 1 / -1;">
                                 <label>Status</label>
-                                <div class="value" style="color: #ff6b6b; font-weight: bold;">Disputed - Awaiting Resolution</div>
-                            </div>
-                            <div class="escrow-item" style="grid-column: 1 / -1;">
-                                <label>Amount</label>
-                                <div class="value">$<?= number_format($escrow['amount'], 2) ?></div>
+                                <div class="value">
+                                    <?php if ($escrow['work_delivered_at']): ?>
+                                        <span style="color: #48bb78;">✓ Work Delivered</span><br>
+                                        <small style="color: #718096;">on <?= date('M d, Y H:i', strtotime($escrow['work_delivered_at'])) ?></small>
+                                    <?php else: ?>
+                                        <span style="color: #718096;">Awaiting delivery...</span>
+                                    <?php endif; ?>
+                                </div>
                             </div>
                         </div>
-                        <?php
-                        // Get any open disputes for this escrow
-                        $disputeStmt = $pdo->prepare("SELECT id FROM disputes WHERE escrow_id = ? AND status = 'open' LIMIT 1");
-                        $disputeStmt->execute([$escrow['id']]);
-                        $dispute = $disputeStmt->fetch();
-                        ?>
-                        <div style="display: flex; gap: 10px; margin-top: 15px;">
-                            <?php if ($dispute): ?>
-                                <a href="/disputes/dispute_view.php?id=<?= $dispute['id'] ?>" class="btn btn-warning" style="flex: 1;">
-                                    <i class="fas fa-folder-open"></i> View Dispute
-                                </a>
-                            <?php else: ?>
-                                <a href="/disputes/open_dispute.php" class="btn btn-danger" style="flex: 1;">
-                                    <i class="fas fa-exclamation-circle"></i> Open Dispute
-                                </a>
+
+                        <!-- Seller: Mark Work Delivered -->
+                        <?php if ($_SESSION['role'] === 'seller' && !$escrow['work_delivered_at']): ?>
+                            <button type="button" class="btn btn-primary" style="width: 100%; margin-top: 15px;" onclick="markWorkDelivered(<?= $escrow['id'] ?>)">
+                                <i class="fas fa-check-circle"></i> Mark Work as Delivered
+                            </button>
+                        <?php endif; ?>
+
+                        <!-- Buyer: Approve Work -->
+                        <?php if ($_SESSION['role'] === 'buyer' && $escrow['work_delivered_at'] && !$escrow['buyer_approved_at']): ?>
+                            <div style="margin-top: 15px; padding: 12px; background: #e3f2fd; border-radius: 6px; border-left: 4px solid #667eea;">
+                                <p style="margin: 0 0 10px 0; color: #2c5282; font-weight: 600;">
+                                    Seller has delivered the work. Review it and approve to release payment.
+                                </p>
+                                <button type="button" class="btn btn-success" style="width: 100%;" onclick="approveWork(<?= $escrow['id'] ?>)">
+                                    <i class="fas fa-thumbs-up"></i> Approve Work & Release Payment
+                                </button>
+                            </div>
+                        <?php elseif ($escrow['buyer_approved_at']): ?>
+                            <div style="margin-top: 15px; padding: 12px; background: #c6f6d5; border-radius: 6px; border-left: 4px solid #48bb78;">
+                                <p style="margin: 0; color: #22543d; font-weight: 600;">
+                                    ✓ Work approved on <?= date('M d, Y H:i', strtotime($escrow['buyer_approved_at'])) ?><br>
+                                    <small>Payment is being released to seller...</small>
+                                </p>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                <?php endif; ?>
+
+                <!-- Show Approval Status in Other States -->
+                <?php if ($escrow && ($escrow['status'] === 'released' || $escrow['status'] === 'refunded')): ?>
+                    <div class="escrow-section" style="margin-top: 30px; border: 2px solid #48bb78;">
+                        <h3>✓ Project Workflow Complete</h3>
+                        <div class="escrow-info">
+                            <?php if ($escrow['work_delivered_at']): ?>
+                                <div class="escrow-item" style="grid-column: 1 / -1;">
+                                    <label>Work Delivered</label>
+                                    <div class="value" style="color: #48bb78;">✓ <?= date('M d, Y H:i', strtotime($escrow['work_delivered_at'])) ?></div>
+                                </div>
                             <?php endif; ?>
+                            <?php if ($escrow['buyer_approved_at']): ?>
+                                <div class="escrow-item" style="grid-column: 1 / -1;">
+                                    <label>Buyer Approved</label>
+                                    <div class="value" style="color: #48bb78;">✓ <?= date('M d, Y H:i', strtotime($escrow['buyer_approved_at'])) ?></div>
+                                </div>
+                            <?php endif; ?>
+                            <div class="escrow-item" style="grid-column: 1 / -1;">
+                                <label>Final Status</label>
+                                <div class="value" style="color: #667eea; font-weight: bold;"><?= ucfirst($escrow['status']) ?></div>
+                            </div>
                         </div>
                     </div>
                 <?php endif; ?>
             </div>
         </div>
+
+        <script>
+            function markWorkDelivered(escrowId) {
+                if (!confirm('Mark work as delivered and notify the buyer?')) return;
+
+                fetch('/dashboard/mark_work_delivered.php', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded'
+                        },
+                        body: 'escrow_id=' + escrowId
+                    })
+                    .then(r => {
+                        const contentType = r.headers.get('content-type');
+                        if (!contentType || !contentType.includes('application/json')) {
+                            throw new Error('Invalid response format (expected JSON)');
+                        }
+                        return r.text().then(text => {
+                            try {
+                                return JSON.parse(text);
+                            } catch (e) {
+                                console.error('JSON parse error. Response text:', text);
+                                throw new Error('Failed to parse JSON response: ' + text.substring(0, 100));
+                            }
+                        });
+                    })
+                    .then(data => {
+                        if (data.status === 'success') {
+                            alert('✓ Work marked as delivered! Buyer will be notified.');
+                            location.reload();
+                        } else {
+                            alert('Error: ' + data.message);
+                        }
+                    })
+                    .catch(e => {
+                        console.error('Delivery error:', e);
+                        alert('Error: ' + e.message);
+                    });
+            }
+
+            function approveWork(escrowId) {
+                if (!confirm('Approve this work and release payment to the seller?')) return;
+
+                fetch('/dashboard/approve_work.php', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded'
+                        },
+                        body: 'escrow_id=' + escrowId
+                    })
+                    .then(r => {
+                        // Check if response is JSON
+                        const contentType = r.headers.get('content-type');
+                        if (!contentType || !contentType.includes('application/json')) {
+                            throw new Error('Invalid response format (expected JSON)');
+                        }
+                        return r.text().then(text => {
+                            try {
+                                return JSON.parse(text);
+                            } catch (e) {
+                                console.error('JSON parse error. Response text:', text);
+                                throw new Error('Failed to parse JSON response: ' + text.substring(0, 100));
+                            }
+                        });
+                    })
+                    .then(data => {
+                        if (data.status === 'success') {
+                            alert('✓ ' + data.message);
+                            if (data.redirect) setTimeout(() => location.href = data.redirect, 1500);
+                            else location.reload();
+                        } else {
+                            alert('Error: ' + data.message);
+                        }
+                    })
+                    .catch(e => {
+                        console.error('Approval error:', e);
+                        alert('Error: ' + e.message);
+                    });
+            }
+        </script>
+
+</body>
+
+</html>
+
+<?php if ($escrow && $escrow['status'] === 'disputed'): ?>
+    <div class="escrow-section" style="margin-top: 30px; border: 2px solid #ffc107;">
+        <h3 style="color: #ff6b6b;">⚠️ Dispute Open</h3>
+        <div class="escrow-info">
+            <div class="escrow-item" style="grid-column: 1 / -1;">
+                <label>Status</label>
+                <div class="value" style="color: #ff6b6b; font-weight: bold;">Disputed - Awaiting Resolution</div>
+            </div>
+            <div class="escrow-item" style="grid-column: 1 / -1;">
+                <label>Amount</label>
+                <div class="value">$<?= number_format($escrow['amount'], 2) ?></div>
+            </div>
+        </div>
+        <?php
+        // Get any open disputes for this escrow
+        $disputeStmt = $pdo->prepare("SELECT id FROM disputes WHERE escrow_id = ? AND status = 'open' LIMIT 1");
+        $disputeStmt->execute([$escrow['id']]);
+        $dispute = $disputeStmt->fetch();
+        ?>
+        <div style="display: flex; gap: 10px; margin-top: 15px;">
+            <?php if ($dispute): ?>
+                <a href="/disputes/dispute_view.php?id=<?= $dispute['id'] ?>" class="btn btn-warning" style="flex: 1;">
+                    <i class="fas fa-folder-open"></i> View Dispute
+                </a>
+            <?php else: ?>
+                <a href="/disputes/open_dispute.php" class="btn btn-danger" style="flex: 1;">
+                    <i class="fas fa-exclamation-circle"></i> Open Dispute
+                </a>
+            <?php endif; ?>
+        </div>
+    </div>
+<?php endif; ?>
+</div>
+</div>
 
 </body>
 

@@ -240,11 +240,35 @@ $favorites = $favoriteStmt->fetchAll();
                                 </div>
                             <?php else: ?>
                                 <?php foreach ($projectsByStatus['funded'] as $project): ?>
+                                    <?php
+                                    // Get escrow delivery/approval status
+                                    $escrowStmt = $pdo->prepare("SELECT work_delivered_at, buyer_approved_at FROM escrow WHERE project_id = ? LIMIT 1");
+                                    $escrowStmt->execute([$project['id']]);
+                                    $escrowStatus = $escrowStmt->fetch(PDO::FETCH_ASSOC);
+                                    ?>
                                     <div class="project-card" style="margin-bottom: 1rem;">
                                         <div class="project-title"><?php echo htmlspecialchars($project['title']); ?></div>
                                         <div style="margin: 0.75rem 0; padding: 0.75rem; background: rgba(16, 185, 129, 0.1); border-radius: 0.5rem; font-size: 0.9rem; color: var(--success);">
                                             ✓ Payment Secured
                                         </div>
+
+                                        <!-- Delivery/Approval Status -->
+                                        <?php if ($escrowStatus): ?>
+                                            <?php if ($escrowStatus['buyer_approved_at']): ?>
+                                                <div style="margin: 0.5rem 0; padding: 0.75rem; background: rgba(16, 185, 129, 0.15); border-left: 3px solid #10b981; border-radius: 0.5rem; font-size: 0.85rem; color: #059669;">
+                                                    ✓ Work Approved
+                                                </div>
+                                            <?php elseif ($escrowStatus['work_delivered_at']): ?>
+                                                <div style="margin: 0.5rem 0; padding: 0.75rem; background: rgba(245, 158, 11, 0.15); border-left: 3px solid #f59e0b; border-radius: 0.5rem; font-size: 0.85rem; color: #d97706;">
+                                                    ⏳ Awaiting Your Approval
+                                                </div>
+                                            <?php else: ?>
+                                                <div style="margin: 0.5rem 0; padding: 0.75rem; background: rgba(59, 130, 246, 0.1); border-left: 3px solid #3b82f6; border-radius: 0.5rem; font-size: 0.85rem; color: #1e40af;">
+                                                    📦 Waiting for Delivery
+                                                </div>
+                                            <?php endif; ?>
+                                        <?php endif; ?>
+
                                         <a href="/dashboard/project_view.php?id=<?php echo $project['id']; ?>" class="action-btn primary" style="width: 100%;">Monitor</a>
                                     </div>
                                 <?php endforeach; ?>
