@@ -56,6 +56,9 @@ try {
 
 <body>
 
+    <!-- Sidebar Overlay for Mobile -->
+    <div id="sidebar-overlay" class="sidebar-overlay"></div>
+
     <div class="dashboard-wrapper">
         <!-- Sidebar -->
         <aside class="sidebar">
@@ -359,6 +362,9 @@ try {
             }
         });
     </script>
+
+    <!-- Sidebar Navigation Script -->
+    <script src="/assets/js/sidebar.js"></script>
 
 </body>
 
