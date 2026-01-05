@@ -28,6 +28,9 @@ $escrows = $stmt->fetchAll();
 
 <body>
 
+    <!-- Sidebar Overlay for Mobile -->
+    <div id="sidebar-overlay" class="sidebar-overlay"></div>
+
     <div class="dashboard-wrapper">
         <aside class="sidebar">
             <div class="sidebar-brand">
@@ -178,6 +181,9 @@ $escrows = $stmt->fetchAll();
             </section>
         </main>
     </div>
+
+    <!-- Sidebar Navigation Script -->
+    <script src="/assets/js/sidebar.js"></script>
 
 </body>
 
