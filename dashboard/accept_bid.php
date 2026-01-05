@@ -1,6 +1,7 @@
 <?php
 require_once "../includes/auth.php";
 require_once "../config/database.php";
+require_once "../services/EmailService.php";
 
 if ($_SESSION['role'] !== 'buyer') {
     die("Access denied");
@@ -71,6 +72,28 @@ try {
     $proj->execute([$bid['project_id']]);
 
     $pdo->commit();
+
+    // Send emails after successful transaction
+    $emailService = new EmailService($pdo);
+
+    // Get project and seller details
+    $projStmt = $pdo->prepare("SELECT title FROM projects WHERE id = ?");
+    $projStmt->execute([$bid['project_id']]);
+    $project = $projStmt->fetch();
+
+    $sellerStmt = $pdo->prepare("SELECT full_name FROM users WHERE id = ?");
+    $sellerStmt->execute([$bid['seller_id']]);
+    $seller = $sellerStmt->fetch();
+
+    $buyerStmt = $pdo->prepare("SELECT full_name FROM users WHERE id = ?");
+    $buyerStmt->execute([$bid['buyer_id']]);
+    $buyer = $buyerStmt->fetch();
+
+    // Send email to seller
+    $emailService->projectAccepted($bid['seller_id'], $bid['project_id'], $project['title'], $buyer['full_name']);
+
+    // Send email to buyer
+    $emailService->projectAcceptedBuyer($bid['buyer_id'], $bid['project_id'], $project['title'], $seller['full_name'], $bid['amount']);
 } catch (Exception $e) {
     $pdo->rollBack();
     die("Error accepting bid: " . $e->getMessage());

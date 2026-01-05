@@ -10,7 +10,7 @@ require_once '../config/database.php';
 require_once '../includes/auth.php';
 require_once '../includes/header.php';
 require_once '../includes/EscrowStateMachine.php';
-require_once '../includes/functions.php'; // optional logging helper
+require_once '../services/EmailService.php';
 
 session_start();
 $userId = $_SESSION['user_id'] ?? null;
@@ -151,6 +151,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             $pdo->commit();
+
+            // Send dispute notification emails
+            try {
+                $emailService = new EmailService($pdo);
+
+                // Get escrow details
+                $escrowStmt = $pdo->prepare("SELECT buyer_id, seller_id, project_id FROM escrow WHERE id = ?");
+                $escrowStmt->execute([$escrowId]);
+                $escrowInfo = $escrowStmt->fetch(PDO::FETCH_ASSOC);
+
+                // Get project info
+                $projStmt = $pdo->prepare("SELECT title FROM projects WHERE id = ?");
+                $projStmt->execute([$escrowInfo['project_id']]);
+                $projInfo = $projStmt->fetch(PDO::FETCH_ASSOC);
+
+                // Determine who opened dispute and who should be notified
+                $otherPartyId = ($userId === $escrowInfo['buyer_id']) ? $escrowInfo['seller_id'] : $escrowInfo['buyer_id'];
+
+                $otherPartyStmt = $pdo->prepare("SELECT full_name FROM users WHERE id = ?");
+                $otherPartyStmt->execute([$otherPartyId]);
+                $otherParty = $otherPartyStmt->fetch(PDO::FETCH_ASSOC);
+
+                // Send to both parties
+                $emailService->disputeOpened($userId, $disputeId, $projInfo['title'], $otherParty['full_name']);
+                $emailService->disputeOpened($otherPartyId, $disputeId, $projInfo['title'], '(User)');
+            } catch (Exception $e) {
+                error_log("Email send failed in open_dispute: " . $e->getMessage());
+            }
 
             // Redirect to dispute view
             header("Location: /disputes/dispute_view.php?id={$disputeId}", true, 303);

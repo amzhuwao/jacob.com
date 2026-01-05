@@ -1,6 +1,7 @@
 <?php
 require_once "../includes/auth.php";
 require_once "../config/database.php";
+require_once "../services/EmailService.php";
 
 if ($_SESSION['role'] !== 'buyer') {
     die(json_encode(['success' => false, 'message' => 'Access denied']));
@@ -83,6 +84,20 @@ try {
         "UPDATE projects SET reviewed_at = NOW() WHERE id = ?"
     );
     $updateStmt->execute([$projectId]);
+
+    // Send review notification email to seller
+    try {
+        $emailService = new EmailService($pdo);
+
+        // Get buyer and seller info
+        $buyerStmt = $pdo->prepare("SELECT full_name FROM users WHERE id = ?");
+        $buyerStmt->execute([$_SESSION['user_id']]);
+        $buyer = $buyerStmt->fetch(PDO::FETCH_ASSOC);
+
+        $emailService->reviewSubmitted($project['seller_id'], $buyer['full_name'], $rating, $reviewText);
+    } catch (Exception $e) {
+        error_log("Email send failed in submit_review: " . $e->getMessage());
+    }
 
     echo json_encode([
         'success' => true,

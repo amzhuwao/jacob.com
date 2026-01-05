@@ -28,6 +28,7 @@ set_error_handler(function ($errno, $errstr, $errfile, $errline) {
 
 require_once '../config/database.php';
 require_once '../includes/auth.php';
+require_once '../services/EmailService.php';
 
 // Only sellers can mark work as delivered
 if (($_SESSION['role'] ?? null) !== 'seller') {
@@ -95,6 +96,29 @@ try {
     @$logStmt->execute([$userId, $escrowId]);
 
     $pdo->commit();
+
+    // Send email to buyer about work delivery
+    try {
+        $emailService = new EmailService($pdo);
+
+        // Get project and seller info
+        $projStmt = $pdo->prepare("SELECT p.id, p.title, p.buyer_id, u.full_name FROM projects p JOIN users u ON p.id = u.id WHERE p.id = ?");
+        $projStmt->execute([$escrow['project_id']]);
+        $projInfo = $projStmt->fetch(PDO::FETCH_ASSOC);
+
+        $sellerStmt = $pdo->prepare("SELECT full_name FROM users WHERE id = ?");
+        $sellerStmt->execute([$userId]);
+        $sellerInfo = $sellerStmt->fetch(PDO::FETCH_ASSOC);
+
+        $projectStmt = $pdo->prepare("SELECT buyer_id, title FROM projects WHERE id = ?");
+        $projectStmt->execute([$escrow['project_id']]);
+        $projectInfo = $projectStmt->fetch(PDO::FETCH_ASSOC);
+
+        $emailService->workDelivered($projectInfo['buyer_id'], $escrow['project_id'], $projectInfo['title'], $sellerInfo['full_name']);
+    } catch (Exception $e) {
+        // Email failure shouldn't fail the whole operation
+        error_log("Email send failed in mark_work_delivered: " . $e->getMessage());
+    }
 
     echo json_encode([
         'status' => 'success',
