@@ -8,10 +8,10 @@
 
 // SMTP Configuration
 define('SMTP_HOST', 'mail.leonom.tech');  // Your SMTP server (e.g., smtp.gmail.com, mail.yourdomain.com)
-define('SMTP_PORT', 587);                  // 587 for TLS, 465 for SSL, 25 for unencrypted
-define('SMTP_ENCRYPTION', 'tls');          // 'tls', 'ssl', or '' for none
+define('SMTP_PORT', 465);                  // 587 for TLS, 465 for SSL, 25 for unencrypted
+define('SMTP_ENCRYPTION', 'ssl');          // 'tls', 'ssl', or '' for none
 define('SMTP_USERNAME', 'info@leonom.tech');
-define('SMTP_PASSWORD', '');               // TODO: Add your email password here
+define('SMTP_PASSWORD', 'L30n0m#2025');    // Email account password
 define('SMTP_FROM_EMAIL', 'info@leonom.tech');
 define('SMTP_FROM_NAME', 'Jacob Marketplace');
 

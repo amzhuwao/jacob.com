@@ -567,9 +567,9 @@ HTML;
             }
 
             // Authenticate
-            $this->smtpCommand($socket, "AUTH LOGIN");
-            $this->smtpCommand($socket, base64_encode($this->smtp_username));
-            $this->smtpCommand($socket, base64_encode($this->smtp_password));
+            $this->smtpCommand($socket, "AUTH LOGIN", '334');
+            $this->smtpCommand($socket, base64_encode($this->smtp_username), '334');
+            $this->smtpCommand($socket, base64_encode($this->smtp_password), '235');
 
             // Send email
             $this->smtpCommand($socket, "MAIL FROM:<{$this->from_email}>");
@@ -630,8 +630,8 @@ HTML;
             return false;
         }
 
-        // Read server greeting
-        $response = fgets($socket);
+        // Read server greeting (handle multi-line responses)
+        $response = $this->readResponse($socket);
         if (substr($response, 0, 3) !== '220') {
             error_log("SMTP server did not respond with 220: $response");
             fclose($socket);
@@ -642,12 +642,28 @@ HTML;
     }
 
     /**
+     * Read multi-line SMTP response
+     */
+    private function readResponse($socket)
+    {
+        $response = '';
+        while ($line = fgets($socket)) {
+            $response .= $line;
+            // Check if this is the last line (no dash after code)
+            if (preg_match('/^\d{3} /', $line)) {
+                break;
+            }
+        }
+        return trim($response);
+    }
+
+    /**
      * Send SMTP command and verify response
      */
     private function smtpCommand($socket, $command, $expected_code = null)
     {
         fwrite($socket, $command . "\r\n");
-        $response = fgets($socket);
+        $response = $this->readResponse($socket);
 
         // Determine expected response code
         if ($expected_code === null) {
