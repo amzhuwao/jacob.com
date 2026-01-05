@@ -591,7 +591,11 @@ $escrow = $escrowStmt->fetch();
                             <?php foreach ($bids as $bid): ?>
                                 <div class="bid-card <?= $bid['status'] ?>">
                                     <div class="bid-header">
-                                        <div class="bid-seller-name">👤 <?= htmlspecialchars($bid['full_name']) ?></div>
+                                        <div class="bid-seller-name">
+                                            👤 <a href="view_seller.php?id=<?= $bid['seller_id'] ?>" style="color: var(--primary); text-decoration: none; font-weight: 600;" title="View <?= htmlspecialchars($bid['full_name']) ?>'s profile">
+                                                <?= htmlspecialchars($bid['full_name']) ?>
+                                            </a>
+                                        </div>
                                         <div class="bid-amount">$<?= number_format($bid['amount'], 2) ?></div>
                                     </div>
 
@@ -621,7 +625,11 @@ $escrow = $escrowStmt->fetch();
                         <div class="escrow-info">
                             <div class="escrow-item" style="grid-column: 1 / -1;">
                                 <label>Seller</label>
-                                <div class="value"><?= htmlspecialchars($acceptedBid['seller_name']) ?></div>
+                                <div class="value">
+                                    <a href="view_seller.php?id=<?= $acceptedBid['seller_id'] ?>" style="color: var(--primary); text-decoration: none; font-weight: 600;" title="View seller profile">
+                                        <?= htmlspecialchars($acceptedBid['seller_name']) ?>
+                                    </a>
+                                </div>
                             </div>
                             <div class="escrow-item" style="grid-column: 1 / -1;">
                                 <label>Amount</label>

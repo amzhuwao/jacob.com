@@ -167,6 +167,15 @@ $reviewsStmt = $pdo->prepare(
 $reviewsStmt->execute([$userId]);
 $reviews = $reviewsStmt->fetchAll();
 
+// Get seller services
+$servicesStmt = $pdo->prepare(
+    "SELECT * FROM seller_services 
+     WHERE seller_id = ? 
+     ORDER BY status DESC, created_at DESC"
+);
+$servicesStmt->execute([$userId]);
+$services = $servicesStmt->fetchAll();
+
 // Calculate profile completion
 $profileFields = [
     'full_name' => !empty($profile['full_name']),
@@ -615,27 +624,68 @@ $totalReviews = $ratingData['total_reviews'] ?? 0;
                         <div id="profile-tab-services" class="profile-tab-content" style="display: none;">
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
                                 <h2 class="profile-section-heading" style="margin: 0;">My Services</h2>
-                                <button class="action-btn primary">➕ Create New Service</button>
+                                <button class="action-btn primary" onclick="openServiceModal()">➕ Create New Service</button>
                             </div>
 
-                            <div class="portfolio-grid-display">
-                                <div class="portfolio-item-card">
-                                    <div class="portfolio-overlay-display">
-                                        <div style="color: white; text-align: center;">
-                                            <div style="font-size: 1.5rem; margin-bottom: 0.5rem;">🎨</div>
-                                            <div style="font-weight: 600;">Logo Design</div>
-                                            <div style="font-size: 0.9rem; margin: 0.5rem 0;">Starting at $150</div>
-                                            <button class="action-btn" style="background: white; color: var(--primary);">Edit Service</button>
+                            <?php if (empty($services)): ?>
+                                <div style="text-align: center; padding: 3rem; background: var(--light); border-radius: 1rem; color: var(--gray);">
+                                    <div style="font-size: 3rem; margin-bottom: 1rem;">📦</div>
+                                    <p style="font-size: 1.1rem; margin-bottom: 0.5rem;">No services yet</p>
+                                    <p style="font-size: 0.95rem; margin-bottom: 1rem;">Create your first service to help buyers find and purchase your offerings</p>
+                                    <button class="action-btn primary" onclick="openServiceModal()">Create Service</button>
+                                </div>
+                            <?php else: ?>
+                                <div class="portfolio-grid-display">
+                                    <?php foreach ($services as $service): ?>
+                                        <div class="portfolio-item-card" style="position: relative;">
+                                            <div class="portfolio-overlay-display">
+                                                <div style="color: white; text-align: center;">
+                                                    <div style="font-size: 1.5rem; margin-bottom: 0.5rem;">
+                                                        <?php
+                                                        $categoryIcons = [
+                                                            'web-development' => '🌐',
+                                                            'mobile-development' => '📱',
+                                                            'ui-ux' => '🎨',
+                                                            'graphic-design' => '🖼️',
+                                                            'copywriting' => '✍️',
+                                                            'marketing' => '📊',
+                                                            'data-entry' => '📋',
+                                                            'other' => '⚙️'
+                                                        ];
+                                                        echo $categoryIcons[$service['category']] ?? '⚙️';
+                                                        ?>
+                                                    </div>
+                                                    <div style="font-weight: 600;"><?php echo htmlspecialchars($service['title']); ?></div>
+                                                    <div style="font-size: 0.9rem; margin: 0.5rem 0;">Starting at $<?php echo number_format($service['base_price'], 2); ?></div>
+                                                    <div style="font-size: 0.8rem; color: rgba(255,255,255,0.8); margin: 0.5rem 0;">
+                                                        <?php
+                                                        if ($service['num_orders'] > 0) {
+                                                            echo $service['num_orders'] . ' order' . ($service['num_orders'] != 1 ? 's' : '');
+                                                        } else {
+                                                            echo 'No orders yet';
+                                                        }
+                                                        ?>
+                                                    </div>
+                                                    <span style="display: inline-block; padding: 0.25rem 0.75rem; background: rgba(255,255,255,0.2); border-radius: 2rem; font-size: 0.75rem; margin: 0.5rem 0; text-transform: capitalize;">
+                                                        <?php echo $service['status']; ?>
+                                                    </span>
+                                                    <div style="margin-top: 0.75rem; display: flex; gap: 0.5rem;">
+                                                        <button class="action-btn" style="background: white; color: var(--primary); flex: 1; font-size: 0.9rem;" onclick="editService(<?php echo $service['id']; ?>)">Edit</button>
+                                                        <button class="action-btn" style="background: #ff6b6b; color: white; flex: 1; font-size: 0.9rem;" onclick="deleteService(<?php echo $service['id']; ?>)">Delete</button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    <?php endforeach; ?>
+
+                                    <div class="portfolio-item-card portfolio-add-new" onclick="openServiceModal()" style="cursor: pointer;">
+                                        <div style="text-align: center; color: var(--gray);">
+                                            <div style="font-size: 3rem;">➕</div>
+                                            <div>Add New Service</div>
                                         </div>
                                     </div>
                                 </div>
-                                <div class="portfolio-item-card portfolio-add-new">
-                                    <div style="text-align: center; color: var(--gray);">
-                                        <div style="font-size: 3rem;">➕</div>
-                                        <div>Add New Service</div>
-                                    </div>
-                                </div>
-                            </div>
+                            <?php endif; ?>
                         </div>
 
                         <!-- Portfolio Tab -->
@@ -1326,6 +1376,128 @@ $totalReviews = $ratingData['total_reviews'] ?? 0;
             }, 300);
         }
 
+        // Service Management Functions
+        let currentServiceId = null;
+
+        function openServiceModal(serviceId = null) {
+            currentServiceId = serviceId;
+            const modal = document.getElementById('serviceModal');
+            const form = document.getElementById('serviceForm');
+            const modalTitle = document.getElementById('serviceModalTitle');
+
+            if (serviceId) {
+                // Load existing service
+                modalTitle.textContent = 'Edit Service';
+                form.style.display = 'block';
+
+                fetch(`/dashboard/manage_services.php?action=get&service_id=${serviceId}`)
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.success) {
+                            const s = data.service;
+                            document.getElementById('serviceTitle').value = s.title;
+                            document.getElementById('serviceDescription').value = s.description;
+                            document.getElementById('servicePrice').value = s.base_price;
+                            document.getElementById('serviceCategory').value = s.category;
+                            document.getElementById('serviceStatus').value = s.status;
+                        }
+                    });
+            } else {
+                // New service
+                modalTitle.textContent = 'Create New Service';
+                form.reset();
+            }
+
+            modal.style.display = 'flex';
+        }
+
+        function closeServiceModal() {
+            document.getElementById('serviceModal').style.display = 'none';
+            currentServiceId = null;
+        }
+
+        function editService(serviceId) {
+            openServiceModal(serviceId);
+        }
+
+        async function deleteService(serviceId) {
+            if (!confirm('Are you sure you want to delete this service?')) return;
+
+            const formData = new FormData();
+            formData.append('action', 'delete');
+            formData.append('service_id', serviceId);
+
+            try {
+                const response = await fetch('/dashboard/manage_services.php', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    alert(result.message);
+                    location.reload();
+                } else {
+                    alert('Error: ' + result.message);
+                }
+            } catch (error) {
+                alert('An error occurred');
+                console.error(error);
+            }
+        }
+
+        document.getElementById('serviceForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const formData = new FormData();
+            formData.append('action', currentServiceId ? 'update' : 'create');
+            formData.append('title', document.getElementById('serviceTitle').value);
+            formData.append('description', document.getElementById('serviceDescription').value);
+            formData.append('base_price', document.getElementById('servicePrice').value);
+            formData.append('category', document.getElementById('serviceCategory').value);
+            formData.append('status', document.getElementById('serviceStatus').value);
+
+            if (currentServiceId) {
+                formData.append('service_id', currentServiceId);
+            }
+
+            const submitBtn = this.querySelector('button[type="submit"]');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Saving...';
+
+            try {
+                const response = await fetch('/dashboard/manage_services.php', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    alert(result.message);
+                    closeServiceModal();
+                    location.reload();
+                } else {
+                    alert('Error: ' + result.message);
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = currentServiceId ? 'Update Service' : 'Create Service';
+                }
+            } catch (error) {
+                alert('An error occurred');
+                submitBtn.disabled = false;
+                submitBtn.textContent = currentServiceId ? 'Update Service' : 'Create Service';
+                console.error(error);
+            }
+        });
+
+        // Close modal when clicking outside
+        document.getElementById('serviceModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeServiceModal();
+            }
+        });
+
         // Smooth scroll for anchor links within dashboard
         document.querySelectorAll('a[href^="#"]').forEach(anchor => {
             anchor.addEventListener('click', function(e) {
@@ -1343,6 +1515,73 @@ $totalReviews = $ratingData['total_reviews'] ?? 0;
             });
         });
     </script>
+
+    <!-- Service Management Modal -->
+    <div id="serviceModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 1000; align-items: center; justify-content: center; padding: 1rem;">
+        <div style="background: white; padding: 2rem; border-radius: 1rem; max-width: 600px; width: 100%; box-shadow: var(--shadow-xl); max-height: 90vh; overflow-y: auto;">
+            <h3 id="serviceModalTitle" style="margin-bottom: 1.5rem; color: var(--dark);">Create New Service</h3>
+
+            <form id="serviceForm" style="display: none;">
+                <div style="margin-bottom: 1.5rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--dark);">Service Title *</label>
+                    <input type="text" id="serviceTitle" required minlength="3" maxlength="100"
+                        style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 0.5rem;"
+                        placeholder="e.g., Logo Design">
+                </div>
+
+                <div style="margin-bottom: 1.5rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--dark);">Description *</label>
+                    <textarea id="serviceDescription" required minlength="10" maxlength="1000" rows="4"
+                        style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 0.5rem; font-family: inherit;"
+                        placeholder="Describe what your service includes..."></textarea>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
+                    <div>
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--dark);">Starting Price (USD) *</label>
+                        <input type="number" id="servicePrice" required min="0.01" step="0.01"
+                            style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 0.5rem;"
+                            placeholder="0.00">
+                    </div>
+
+                    <div>
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--dark);">Category *</label>
+                        <select id="serviceCategory" required
+                            style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 0.5rem;">
+                            <option value="">Select a category</option>
+                            <option value="web-development">Web Development</option>
+                            <option value="mobile-development">Mobile Development</option>
+                            <option value="ui-ux">UI/UX Design</option>
+                            <option value="graphic-design">Graphic Design</option>
+                            <option value="copywriting">Copywriting</option>
+                            <option value="marketing">Marketing</option>
+                            <option value="data-entry">Data Entry</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 1.5rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--dark);">Status</label>
+                    <select id="serviceStatus"
+                        style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 0.5rem;">
+                        <option value="active">Active</option>
+                        <option value="draft">Draft</option>
+                        <option value="paused">Paused</option>
+                    </select>
+                </div>
+
+                <div style="display: flex; gap: 1rem;">
+                    <button type="button" onclick="closeServiceModal()" class="action-btn" style="flex: 1;">
+                        Cancel
+                    </button>
+                    <button type="submit" class="action-btn primary" style="flex: 1;">
+                        <span id="submitBtnText">Create Service</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
 
 </body>
 

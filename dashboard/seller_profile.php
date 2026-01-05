@@ -92,10 +92,68 @@ $completedFields = count(array_filter($profileFields));
 $totalFields = count($profileFields);
 $profileCompletion = round(($completedFields / $totalFields) * 100);
 
-// Mock data for demonstration
-$profileViews = 247;
-$responseRate = 95;
-$avgResponseTime = "2 hours";
+// Get real profile views from users table
+$profileViewsStmt = $pdo->prepare("SELECT profile_views FROM users WHERE id = ?");
+$profileViewsStmt->execute([$userId]);
+$profileViews = $profileViewsStmt->fetch()['profile_views'] ?? 0;
+
+// Response Rate - Calculate from bids (last 30 days)
+$responseStmt = $pdo->prepare(
+    "SELECT 
+        ROUND(COALESCE(COUNT(CASE WHEN responded_at IS NOT NULL THEN 1 END), 0) / 
+              NULLIF(COUNT(*), 0) * 100, 0) as response_rate
+     FROM bids 
+     WHERE seller_id = ? 
+     AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)"
+);
+$responseStmt->execute([$userId]);
+$responseRate = (int)($responseStmt->fetch()['response_rate'] ?? 0);
+
+// Get real average response time
+$avgTimeStmt = $pdo->prepare(
+    "SELECT 
+        ROUND(AVG(TIMESTAMPDIFF(MINUTE, created_at, responded_at)), 0) as avg_minutes
+     FROM bids 
+     WHERE seller_id = ? AND responded_at IS NOT NULL"
+);
+$avgTimeStmt->execute([$userId]);
+$avgMinutes = $avgTimeStmt->fetch()['avg_minutes'] ?? 0;
+
+// Convert minutes to readable format
+if ($avgMinutes == 0) {
+    $avgResponseTime = "No data yet";
+} elseif ($avgMinutes < 60) {
+    $avgResponseTime = round($avgMinutes) . " minutes";
+} elseif ($avgMinutes < 1440) {
+    $avgResponseTime = round($avgMinutes / 60, 1) . " hours";
+} else {
+    $avgResponseTime = round($avgMinutes / 1440, 1) . " days";
+}
+
+// Get real average rating and total reviews
+$ratingStmt = $pdo->prepare(
+    "SELECT 
+        ROUND(AVG(rating), 1) as avg_rating, 
+        COUNT(*) as total_reviews
+     FROM seller_reviews 
+     WHERE seller_id = ?"
+);
+$ratingStmt->execute([$userId]);
+$ratingData = $ratingStmt->fetch();
+$avgRating = $ratingData['avg_rating'] ?? 0;
+$totalReviews = $ratingData['total_reviews'] ?? 0;
+
+// Get reviews for display
+$reviewsStmt = $pdo->prepare(
+    "SELECT sr.*, u.full_name 
+     FROM seller_reviews sr
+     JOIN users u ON sr.buyer_id = u.id
+     WHERE sr.seller_id = ?
+     ORDER BY sr.created_at DESC
+     LIMIT 10"
+);
+$reviewsStmt->execute([$userId]);
+$reviews = $reviewsStmt->fetchAll();
 ?>
 
 <!DOCTYPE html>
@@ -743,35 +801,51 @@ $avgResponseTime = "2 hours";
 
                     <!-- Reviews Tab -->
                     <div id="tab-reviews" class="tab-content" style="display: none;">
-                        <h2 class="section-heading">Client Reviews</h2>
+                        <h2 class="section-heading">Client Reviews (<?php echo $totalReviews; ?>)</h2>
 
-                        <div class="review-card">
-                            <div class="review-header">
-                                <div>
-                                    <div class="review-author">John Smith</div>
-                                    <div class="review-rating">⭐⭐⭐⭐⭐</div>
+                        <?php if (empty($reviews)): ?>
+                            <div style="text-align: center; padding: 3rem; color: var(--gray);">
+                                <div style="font-size: 3rem; margin-bottom: 1rem;">📭</div>
+                                <p style="font-size: 1.1rem;">No reviews yet</p>
+                                <p style="margin-top: 0.5rem;">Complete projects to get your first review!</p>
+                            </div>
+                        <?php else: ?>
+                            <?php if ($avgRating > 0): ?>
+                                <div style="background: var(--light); padding: 1.5rem; border-radius: 0.75rem; margin-bottom: 2rem; text-align: center;">
+                                    <div style="font-size: 3rem; color: #ffd700; margin-bottom: 0.5rem;">
+                                        ⭐ <?php echo number_format($avgRating, 1); ?>
+                                    </div>
+                                    <div style="color: var(--gray);">
+                                        Average rating from <?php echo $totalReviews; ?> review<?php echo $totalReviews != 1 ? 's' : ''; ?>
+                                    </div>
                                 </div>
-                                <small style="color: var(--gray);">2 days ago</small>
-                            </div>
-                            <div class="review-text">
-                                Excellent work! Very professional and delivered on time. Will definitely hire again.
-                            </div>
-                            <button class="review-reply-btn">💬 Reply to Review</button>
-                        </div>
+                            <?php endif; ?>
 
-                        <div class="review-card">
-                            <div class="review-header">
-                                <div>
-                                    <div class="review-author">Sarah Johnson</div>
-                                    <div class="review-rating">⭐⭐⭐⭐⭐</div>
+                            <?php foreach ($reviews as $review): ?>
+                                <div class="review-card">
+                                    <div class="review-header">
+                                        <div>
+                                            <div class="review-author"><?php echo htmlspecialchars($review['full_name']); ?></div>
+                                            <div class="review-rating"><?php echo str_repeat('⭐', $review['rating']); ?></div>
+                                        </div>
+                                        <small style="color: var(--gray);"><?php echo date('M j, Y', strtotime($review['created_at'])); ?></small>
+                                    </div>
+                                    <div class="review-text">
+                                        <?php echo htmlspecialchars($review['review_text']); ?>
+                                    </div>
+                                    <?php if (!empty($review['reply_text'])): ?>
+                                        <div style="background: white; padding: 1rem; border-radius: 0.5rem; margin-top: 1rem; border-left: 3px solid var(--primary);">
+                                            <div style="font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">Your Reply:</div>
+                                            <div style="color: var(--gray); font-size: 0.95rem;">
+                                                <?php echo htmlspecialchars($review['reply_text']); ?>
+                                            </div>
+                                        </div>
+                                    <?php else: ?>
+                                        <button class="review-reply-btn" onclick="showReplyForm(<?php echo $review['id']; ?>)">💬 Reply to Review</button>
+                                    <?php endif; ?>
                                 </div>
-                                <small style="color: var(--gray);">1 week ago</small>
-                            </div>
-                            <div class="review-text">
-                                Amazing communication and quality work. Highly recommended!
-                            </div>
-                            <button class="review-reply-btn">💬 Reply to Review</button>
-                        </div>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
                     </div>
 
                     <!-- Settings Tab -->

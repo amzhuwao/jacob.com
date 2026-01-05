@@ -58,6 +58,45 @@ $favoriteStmt = $pdo->prepare(
 );
 $favoriteStmt->execute([$userId]);
 $favorites = $favoriteStmt->fetchAll();
+
+// Get spending by category (real data)
+$spendingByCategory = [];
+$categorySpendStmt = $pdo->prepare(
+    "SELECT 
+        p.category,
+        COALESCE(SUM(b.amount), 0) as total_spent
+     FROM projects p
+     JOIN bids b ON p.id = b.project_id
+     WHERE p.buyer_id = ? AND b.status = 'accepted'
+     GROUP BY p.category
+     ORDER BY total_spent DESC"
+);
+$categorySpendStmt->execute([$userId]);
+$spendingByCategory = $categorySpendStmt->fetchAll();
+
+// Calculate percentages
+$categoryTotalSpend = array_sum(array_column($spendingByCategory, 'total_spent'));
+foreach ($spendingByCategory as &$cat) {
+    $cat['percentage'] = $categoryTotalSpend > 0 ? round(($cat['total_spent'] / $categoryTotalSpend) * 100) : 0;
+}
+unset($cat);
+
+// Get favorite freelancers with real ratings
+$favoritesWithRatings = [];
+foreach ($favorites as $freelancer) {
+    $ratingStmt = $pdo->prepare(
+        "SELECT ROUND(AVG(rating), 1) as avg_rating, COUNT(*) as review_count
+         FROM seller_reviews
+         WHERE seller_id = ?"
+    );
+    $ratingStmt->execute([$freelancer['id']]);
+    $ratingData = $ratingStmt->fetch();
+
+    $freelancer['avg_rating'] = $ratingData['avg_rating'] ?? 0;
+    $freelancer['review_count'] = $ratingData['review_count'] ?? 0;
+    $favoritesWithRatings[] = $freelancer;
+}
+$favorites = $favoritesWithRatings;
 ?>
 
 <!DOCTYPE html>
@@ -289,11 +328,35 @@ $favorites = $favoriteStmt->fetchAll();
                                 </div>
                             <?php else: ?>
                                 <?php foreach ($projectsByStatus['completed'] as $project): ?>
-                                    <div class="project-card" style="margin-bottom: 1rem; opacity: 0.8;">
+                                    <?php
+                                    // Check if buyer has already reviewed this project
+                                    $reviewCheckStmt = $pdo->prepare("SELECT id FROM seller_reviews WHERE project_id = ? AND buyer_id = ?");
+                                    $reviewCheckStmt->execute([$project['id'], $userId]);
+                                    $hasReviewed = $reviewCheckStmt->fetch();
+
+                                    // Get seller info for this project
+                                    $sellerStmt = $pdo->prepare("SELECT u.id, u.full_name FROM users u JOIN escrow e ON u.id = e.seller_id WHERE e.project_id = ? LIMIT 1");
+                                    $sellerStmt->execute([$project['id']]);
+                                    $seller = $sellerStmt->fetch();
+                                    ?>
+                                    <div class="project-card" style="margin-bottom: 1rem;">
                                         <div class="project-title"><?php echo htmlspecialchars($project['title']); ?></div>
                                         <div style="margin: 0.75rem 0; padding: 0.75rem; background: rgba(16, 185, 129, 0.1); border-radius: 0.5rem; font-size: 0.9rem; color: var(--success);">
                                             ✓ Delivered & Paid
                                         </div>
+
+                                        <?php if (!$hasReviewed && $seller): ?>
+                                            <button onclick="openReviewModal(<?php echo $project['id']; ?>, '<?php echo htmlspecialchars($project['title'], ENT_QUOTES); ?>', '<?php echo htmlspecialchars($seller['full_name'], ENT_QUOTES); ?>')"
+                                                class="action-btn" style="width: 100%; background: #fbbf24; color: white; margin-top: 0.5rem;">
+                                                ⭐ Leave Review
+                                            </button>
+                                        <?php elseif ($hasReviewed): ?>
+                                            <div style="margin-top: 0.5rem; padding: 0.5rem; background: rgba(16, 185, 129, 0.1); border-radius: 0.5rem; font-size: 0.85rem; color: var(--success); text-align: center;">
+                                                ✓ Reviewed
+                                            </div>
+                                        <?php endif; ?>
+
+                                        <a href="/dashboard/project_view.php?id=<?php echo $project['id']; ?>" class="action-btn primary" style="width: 100%; margin-top: 0.5rem;">View Details</a>
                                     </div>
                                 <?php endforeach; ?>
                             <?php endif; ?>
@@ -308,35 +371,40 @@ $favorites = $favoriteStmt->fetchAll();
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
                     <div style="background: white; padding: 1.5rem; border-radius: 1rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
                         <h3 style="margin-bottom: 1rem;">Budget Breakdown</h3>
-                        <div style="display: flex; flex-direction: column; gap: 1rem;">
-                            <div>
-                                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
-                                    <span>Graphic Design</span>
-                                    <span style="font-weight: 600;">$4,500 (45%)</span>
-                                </div>
-                                <div class="progress-bar">
-                                    <div class="progress-fill" style="width: 45%;"></div>
-                                </div>
+                        <?php if (empty($spendingByCategory)): ?>
+                            <div style="text-align: center; padding: 2rem; color: var(--gray);">
+                                <div style="font-size: 2rem; margin-bottom: 0.5rem;">📊</div>
+                                <p>No spending data yet</p>
+                                <p style="font-size: 0.85rem; margin-top: 0.5rem;">Start hiring freelancers to see your spending breakdown</p>
                             </div>
-                            <div>
-                                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
-                                    <span>Copywriting</span>
-                                    <span style="font-weight: 600;">$3,200 (32%)</span>
-                                </div>
-                                <div class="progress-bar">
-                                    <div class="progress-fill" style="width: 32%;"></div>
-                                </div>
+                        <?php else: ?>
+                            <div style="display: flex; flex-direction: column; gap: 1rem;">
+                                <?php
+                                $categoryLabels = [
+                                    'web-development' => 'Web Development',
+                                    'mobile-development' => 'Mobile Development',
+                                    'ui-ux' => 'UI/UX Design',
+                                    'graphic-design' => 'Graphic Design',
+                                    'copywriting' => 'Copywriting',
+                                    'marketing' => 'Marketing',
+                                    'data-entry' => 'Data Entry',
+                                    'other' => 'Other'
+                                ];
+                                $topCategories = array_slice($spendingByCategory, 0, 5);
+                                foreach ($topCategories as $category):
+                                ?>
+                                    <div>
+                                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                                            <span><?php echo $categoryLabels[$category['category']] ?? ucfirst(str_replace('-', ' ', $category['category'])); ?></span>
+                                            <span style="font-weight: 600;">$<?php echo number_format($category['total_spent'], 0); ?> (<?php echo $category['percentage']; ?>%)</span>
+                                        </div>
+                                        <div class="progress-bar">
+                                            <div class="progress-fill" style="width: <?php echo $category['percentage']; ?>%;"></div>
+                                        </div>
+                                    </div>
+                                <?php endforeach; ?>
                             </div>
-                            <div>
-                                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
-                                    <span>Development</span>
-                                    <span style="font-weight: 600;">$2,300 (23%)</span>
-                                </div>
-                                <div class="progress-bar">
-                                    <div class="progress-fill" style="width: 23%;"></div>
-                                </div>
-                            </div>
-                        </div>
+                        <?php endif; ?>
                     </div>
 
                     <div style="background: white; padding: 1.5rem; border-radius: 1rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
@@ -371,9 +439,17 @@ $favorites = $favoriteStmt->fetchAll();
                                 </div>
                                 <div class="project-title"><?php echo htmlspecialchars($freelancer['full_name']); ?></div>
                                 <div style="color: var(--gray); margin-bottom: 1rem; font-size: 0.9rem;">
-                                    ⭐⭐⭐⭐⭐ • <?php echo $freelancer['completed_projects']; ?> projects
+                                    <?php if ($freelancer['avg_rating'] > 0): ?>
+                                        <?php echo str_repeat('⭐', round($freelancer['avg_rating'])); ?>
+                                        <?php echo number_format($freelancer['avg_rating'], 1); ?>
+                                        (<?php echo $freelancer['review_count']; ?> reviews)
+                                    <?php else: ?>
+                                        No reviews yet
+                                    <?php endif; ?>
+                                    • <?php echo $freelancer['completed_projects']; ?> projects
                                 </div>
-                                <a href="/dashboard/project_view.php" class="action-btn primary" style="width: 100%;">Hire Again</a>
+                                <a href="view_seller.php?id=<?php echo $freelancer['id']; ?>" class="action-btn" style="width: 100%; margin-bottom: 0.5rem;">View Profile</a>
+                                <a href="buyer_post_project.php" class="action-btn primary" style="width: 100%;">Hire Again</a>
                             </div>
                         <?php endforeach; ?>
                     </div>
@@ -382,7 +458,137 @@ $favorites = $favoriteStmt->fetchAll();
         </main>
     </div>
 
+    <!-- Review Modal -->
+    <div id="reviewModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 1000; align-items: center; justify-content: center;">
+        <div style="background: white; padding: 2rem; border-radius: 1rem; max-width: 500px; width: 90%; box-shadow: var(--shadow-xl);">
+            <h3 style="margin-bottom: 1.5rem; color: var(--dark);">⭐ Leave a Review</h3>
+
+            <form id="reviewForm">
+                <input type="hidden" id="reviewProjectId" name="project_id">
+
+                <div style="margin-bottom: 1.5rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--dark);">Project</label>
+                    <div id="reviewProjectTitle" style="color: var(--gray); font-size: 0.95rem;"></div>
+                </div>
+
+                <div style="margin-bottom: 1.5rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--dark);">Seller</label>
+                    <div id="reviewSellerName" style="color: var(--gray); font-size: 0.95rem;"></div>
+                </div>
+
+                <div style="margin-bottom: 1.5rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--dark);">Rating *</label>
+                    <div style="display: flex; gap: 0.5rem; font-size: 2rem;">
+                        <span class="star-rating" data-rating="1" onclick="setRating(1)" style="cursor: pointer; color: #d1d5db;">⭐</span>
+                        <span class="star-rating" data-rating="2" onclick="setRating(2)" style="cursor: pointer; color: #d1d5db;">⭐</span>
+                        <span class="star-rating" data-rating="3" onclick="setRating(3)" style="cursor: pointer; color: #d1d5db;">⭐</span>
+                        <span class="star-rating" data-rating="4" onclick="setRating(4)" style="cursor: pointer; color: #d1d5db;">⭐</span>
+                        <span class="star-rating" data-rating="5" onclick="setRating(5)" style="cursor: pointer; color: #d1d5db;">⭐</span>
+                    </div>
+                    <input type="hidden" id="reviewRating" name="rating" required>
+                </div>
+
+                <div style="margin-bottom: 1.5rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--dark);">Your Review *</label>
+                    <textarea name="review_text" id="reviewText" rows="5"
+                        style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 0.5rem; font-family: inherit; resize: vertical;"
+                        placeholder="Share your experience working with this seller..."
+                        required minlength="10" maxlength="1000"></textarea>
+                    <small style="color: var(--gray); font-size: 0.85rem;">Minimum 10 characters, maximum 1000</small>
+                </div>
+
+                <div id="reviewMessage" style="margin-bottom: 1rem; padding: 0.75rem; border-radius: 0.5rem; display: none;"></div>
+
+                <div style="display: flex; gap: 1rem;">
+                    <button type="button" onclick="closeReviewModal()" class="action-btn" style="flex: 1;">
+                        Cancel
+                    </button>
+                    <button type="submit" class="action-btn primary" style="flex: 1;">
+                        Submit Review
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script>
+        let selectedRating = 0;
+
+        function openReviewModal(projectId, projectTitle, sellerName) {
+            document.getElementById('reviewProjectId').value = projectId;
+            document.getElementById('reviewProjectTitle').textContent = projectTitle;
+            document.getElementById('reviewSellerName').textContent = sellerName;
+            document.getElementById('reviewModal').style.display = 'flex';
+            document.getElementById('reviewText').value = '';
+            document.getElementById('reviewMessage').style.display = 'none';
+            setRating(0); // Reset rating
+        }
+
+        function closeReviewModal() {
+            document.getElementById('reviewModal').style.display = 'none';
+        }
+
+        function setRating(rating) {
+            selectedRating = rating;
+            document.getElementById('reviewRating').value = rating;
+
+            // Update star colors
+            document.querySelectorAll('.star-rating').forEach((star, index) => {
+                if (index < rating) {
+                    star.style.color = '#fbbf24'; // Gold
+                } else {
+                    star.style.color = '#d1d5db'; // Gray
+                }
+            });
+        }
+
+        document.getElementById('reviewForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            if (selectedRating === 0) {
+                showReviewMessage('Please select a rating', 'error');
+                return;
+            }
+
+            const formData = new FormData(this);
+            const submitBtn = this.querySelector('button[type="submit"]');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Submitting...';
+
+            try {
+                const response = await fetch('/dashboard/submit_review.php', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showReviewMessage(result.message, 'success');
+                    setTimeout(() => {
+                        closeReviewModal();
+                        location.reload(); // Reload to update UI
+                    }, 1500);
+                } else {
+                    showReviewMessage(result.message, 'error');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Submit Review';
+                }
+            } catch (error) {
+                showReviewMessage('An error occurred. Please try again.', 'error');
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Submit Review';
+            }
+        });
+
+        function showReviewMessage(message, type) {
+            const msgDiv = document.getElementById('reviewMessage');
+            msgDiv.textContent = message;
+            msgDiv.style.display = 'block';
+            msgDiv.style.background = type === 'success' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)';
+            msgDiv.style.color = type === 'success' ? '#059669' : '#dc2626';
+        }
+
         function toggleSidebar() {
             document.querySelector('.sidebar').classList.toggle('collapsed');
             document.querySelector('.main-content').classList.toggle('expanded');
@@ -393,6 +599,18 @@ $favorites = $favoriteStmt->fetchAll();
             if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
                 e.preventDefault();
                 document.querySelector('.search-bar input').focus();
+            }
+
+            // Close modal on Escape
+            if (e.key === 'Escape') {
+                closeReviewModal();
+            }
+        });
+
+        // Close modal when clicking outside
+        document.getElementById('reviewModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeReviewModal();
             }
         });
     </script>
