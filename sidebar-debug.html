@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sidebar Debug Test</title>
+    <link rel="stylesheet" href="/assets/css/dashboard.css" />
+    <style>
+      body {
+        margin: 0;
+      }
+      .debug-panel {
+        position: fixed;
+        top: 10px;
+        right: 10px;
+        background: white;
+        padding: 15px;
+        border: 2px solid #333;
+        border-radius: 8px;
+        z-index: 10000;
+        max-width: 300px;
+        font-family: monospace;
+        font-size: 12px;
+      }
+      .debug-panel h3 {
+        margin: 0 0 10px 0;
+        font-size: 14px;
+      }
+      .debug-item {
+        margin: 5px 0;
+        padding: 5px;
+        background: #f0f0f0;
+      }
+      .status-ok {
+        color: green;
+      }
+      .status-error {
+        color: red;
+      }
+      .test-btn {
+        background: #667eea;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 4px;
+        cursor: pointer;
+        margin: 5px 0;
+        width: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Debug Panel -->
+    <div class="debug-panel">
+      <h3>🔍 Sidebar Debug</h3>
+      <div id="debug-output"></div>
+      <button class="test-btn" onclick="runTests()">Run Tests</button>
+      <button class="test-btn" onclick="forceToggle()">Force Toggle</button>
+      <button class="test-btn" onclick="location.reload()">Reload Page</button>
+    </div>
+
+    <!-- Sidebar Overlay for Mobile -->
+    <div id="sidebar-overlay" class="sidebar-overlay"></div>
+
+    <div class="dashboard-wrapper">
+      <!-- Sidebar -->
+      <aside class="sidebar">
+        <div class="sidebar-brand">
+          <span>✨</span>
+          <span>Jacob</span>
+        </div>
+        <ul class="sidebar-nav">
+          <li>
+            <a href="#dashboard" class="active"
+              ><span>📊</span> <span>Dashboard</span></a
+            >
+          </li>
+          <li>
+            <a href="#opportunities"
+              ><span>💼</span> <span>Opportunities</span></a
+            >
+          </li>
+          <li>
+            <a href="#active"><span>⚡</span> <span>Active Orders</span></a>
+          </li>
+          <li>
+            <a href="#wallet"><span>💰</span> <span>My Wallet</span></a>
+          </li>
+        </ul>
+      </aside>
+
+      <!-- Main Content -->
+      <main class="main-content">
+        <!-- Header -->
+        <div class="dashboard-header">
+          <div class="header-left">
+            <button class="toggle-sidebar" onclick="toggleSidebar()">☰</button>
+            <h2>Sidebar Debug Test</h2>
+          </div>
+        </div>
+
+        <!-- Content -->
+        <div style="padding: 2rem">
+          <h1>Sidebar Functionality Test</h1>
+          <p>Click the hamburger menu (☰) above to toggle the sidebar.</p>
+
+          <h2>Test Instructions:</h2>
+          <ol>
+            <li>Click "Run Tests" in the debug panel</li>
+            <li>Check all green checkmarks</li>
+            <li>Resize window to mobile (<1024px)</li>
+            <li>Click hamburger menu</li>
+            <li>Sidebar should slide in from left</li>
+            <li>Click overlay to close</li>
+          </ol>
+
+          <h2>Manual Tests:</h2>
+          <ul>
+            <li>Press Escape key (should close on mobile)</li>
+            <li>Tab through nav links (keyboard navigation)</li>
+            <li>Click a nav link (should close on mobile)</li>
+            <li>Resize window back and forth</li>
+          </ul>
+        </div>
+      </main>
+    </div>
+
+    <script>
+      // Comprehensive debugging
+      function runTests() {
+        const output = document.getElementById("debug-output");
+        let html = "";
+
+        // Test 1: Sidebar element exists
+        const sidebar = document.querySelector(".sidebar");
+        html += `<div class="debug-item">
+                Sidebar element: <span class="${
+                  sidebar ? "status-ok" : "status-error"
+                }">
+                    ${sidebar ? "✓ Found" : "✗ Missing"}
+                </span>
+            </div>`;
+
+        // Test 2: Overlay exists
+        const overlay = document.getElementById("sidebar-overlay");
+        html += `<div class="debug-item">
+                Overlay element: <span class="${
+                  overlay ? "status-ok" : "status-error"
+                }">
+                    ${overlay ? "✓ Found" : "✗ Missing"}
+                </span>
+            </div>`;
+
+        // Test 3: Toggle button exists
+        const toggleBtn = document.querySelector(".toggle-sidebar");
+        html += `<div class="debug-item">
+                Toggle button: <span class="${
+                  toggleBtn ? "status-ok" : "status-error"
+                }">
+                    ${toggleBtn ? "✓ Found" : "✗ Missing"}
+                </span>
+            </div>`;
+
+        // Test 4: SidebarManager exists
+        html += `<div class="debug-item">
+                SidebarManager: <span class="${
+                  typeof SidebarManager !== "undefined"
+                    ? "status-ok"
+                    : "status-error"
+                }">
+                    ${
+                      typeof SidebarManager !== "undefined"
+                        ? "✓ Loaded"
+                        : "✗ Not loaded"
+                    }
+                </span>
+            </div>`;
+
+        // Test 5: toggleSidebar function exists
+        html += `<div class="debug-item">
+                toggleSidebar(): <span class="${
+                  typeof window.toggleSidebar === "function"
+                    ? "status-ok"
+                    : "status-error"
+                }">
+                    ${
+                      typeof window.toggleSidebar === "function"
+                        ? "✓ Available"
+                        : "✗ Missing"
+                    }
+                </span>
+            </div>`;
+
+        // Test 6: Check current classes
+        if (sidebar) {
+          const classes = sidebar.classList.toString();
+          html += `<div class="debug-item">
+                    Sidebar classes: <br><code>${classes || "none"}</code>
+                </div>`;
+
+          // Test 7: Check computed transform
+          const style = window.getComputedStyle(sidebar);
+          const transform = style.transform;
+          html += `<div class="debug-item">
+                    Transform: <br><code>${transform}</code>
+                </div>`;
+        }
+
+        // Test 8: Window width
+        html += `<div class="debug-item">
+                Window width: ${window.innerWidth}px
+                ${window.innerWidth < 1024 ? "(Mobile)" : "(Desktop)"}
+            </div>`;
+
+        // Test 9: Check if script loaded
+        const scripts = Array.from(document.scripts).map((s) => s.src);
+        const hasSidebarScript = scripts.some((s) => s.includes("sidebar.js"));
+        html += `<div class="debug-item">
+                sidebar.js loaded: <span class="${
+                  hasSidebarScript ? "status-ok" : "status-error"
+                }">
+                    ${hasSidebarScript ? "✓ Yes" : "✗ No"}
+                </span>
+            </div>`;
+
+        // Test 10: Console errors
+        html += `<div class="debug-item">
+                Check browser console (F12) for errors
+            </div>`;
+
+        output.innerHTML = html;
+
+        // Log to console
+        console.log("=== SIDEBAR DEBUG ===");
+        console.log("Sidebar:", sidebar);
+        console.log("Overlay:", overlay);
+        console.log("Toggle button:", toggleBtn);
+        console.log(
+          "SidebarManager:",
+          typeof SidebarManager !== "undefined" ? SidebarManager : "undefined"
+        );
+        console.log("toggleSidebar:", typeof window.toggleSidebar);
+        console.log("Window width:", window.innerWidth);
+      }
+
+      function forceToggle() {
+        const sidebar = document.querySelector(".sidebar");
+        const overlay = document.getElementById("sidebar-overlay");
+
+        if (!sidebar || !overlay) {
+          alert("Sidebar or overlay not found!");
+          return;
+        }
+
+        // Manual toggle
+        if (sidebar.classList.contains("open")) {
+          sidebar.classList.remove("open");
+          overlay.classList.remove("active");
+          document.body.style.overflow = "";
+          console.log("Closed manually");
+        } else {
+          sidebar.classList.add("open");
+          overlay.classList.add("active");
+          document.body.style.overflow = "hidden";
+          console.log("Opened manually");
+        }
+      }
+
+      // Run tests on load
+      window.addEventListener("load", () => {
+        setTimeout(runTests, 500);
+      });
+
+      // Listen for clicks
+      document.addEventListener("click", (e) => {
+        if (e.target.classList.contains("toggle-sidebar")) {
+          console.log("Toggle button clicked!");
+        }
+      });
+
+      // Listen for toggleSidebar calls
+      const originalToggle = window.toggleSidebar;
+      if (originalToggle) {
+        window.toggleSidebar = function () {
+          console.log("toggleSidebar() called");
+          originalToggle.apply(this, arguments);
+        };
+      }
+    </script>
+
+    <!-- Sidebar Navigation Script -->
+    <script src="/assets/js/sidebar.js"></script>
+  </body>
+</html>

@@ -88,7 +88,7 @@ try {
             <!-- Header -->
             <div class="dashboard-header">
                 <div class="header-left">
-                    <button class="toggle-sidebar" onclick="toggleSidebar()">☰</button>
+                    <button class="toggle-sidebar">☰</button>
                     <div class="search-bar">
                         <input type="text" placeholder="Search projects, clients, or help... (Ctrl+K)">
                     </div>
