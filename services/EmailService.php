@@ -5,17 +5,34 @@
  * 
  * Handles all transactional emails for the platform
  * Supports: project events, escrow events, review notifications, disputes
+ * Uses SMTP for reliable email delivery
  */
+
+require_once __DIR__ . '/../config/email.php';
 
 class EmailService
 {
-    private $from_email = 'info@leonom.tech';
-    private $from_name = 'Jacob Marketplace';
+    private $from_email;
+    private $from_name;
     private $pdo;
+    private $smtp_host;
+    private $smtp_port;
+    private $smtp_username;
+    private $smtp_password;
+    private $smtp_encryption;
 
     public function __construct($pdo)
     {
         $this->pdo = $pdo;
+
+        // Load SMTP configuration
+        $this->smtp_host = SMTP_HOST;
+        $this->smtp_port = SMTP_PORT;
+        $this->smtp_username = SMTP_USERNAME;
+        $this->smtp_password = SMTP_PASSWORD;
+        $this->smtp_encryption = SMTP_ENCRYPTION;
+        $this->from_email = SMTP_FROM_EMAIL;
+        $this->from_name = SMTP_FROM_NAME;
     }
 
     /**
@@ -521,20 +538,151 @@ HTML;
     }
 
     /**
-     * Send email using PHP mail()
+     * Send email using SMTP
      */
     private function send($to, $subject, $body)
     {
-        $headers = "MIME-Version: 1.0\r\n";
-        $headers .= "Content-Type: text/html; charset=UTF-8\r\n";
-        $headers .= "From: {$this->from_name} <{$this->from_email}>\r\n";
-        $headers .= "Reply-To: {$this->from_email}\r\n";
+        try {
+            // Validate SMTP configuration
+            if (empty($this->smtp_password)) {
+                error_log("SMTP password not configured. Email to $to not sent.");
+                return false;
+            }
 
-        $result = mail($to, $subject, $body, $headers);
+            // Create socket connection to SMTP server
+            $socket = $this->connectToSMTP();
+            if (!$socket) {
+                error_log("Failed to connect to SMTP server for email to $to");
+                return false;
+            }
 
-        // Log email sends for debugging
-        error_log("Email sent to $to: $subject (Result: " . ($result ? 'success' : 'failed') . ")");
+            // SMTP conversation
+            $this->smtpCommand($socket, "EHLO {$this->smtp_host}");
 
-        return $result;
+            // Start TLS if required
+            if ($this->smtp_encryption === 'tls') {
+                $this->smtpCommand($socket, "STARTTLS");
+                stream_socket_enable_crypto($socket, true, STREAM_CRYPTO_METHOD_TLS_CLIENT);
+                $this->smtpCommand($socket, "EHLO {$this->smtp_host}");
+            }
+
+            // Authenticate
+            $this->smtpCommand($socket, "AUTH LOGIN");
+            $this->smtpCommand($socket, base64_encode($this->smtp_username));
+            $this->smtpCommand($socket, base64_encode($this->smtp_password));
+
+            // Send email
+            $this->smtpCommand($socket, "MAIL FROM:<{$this->from_email}>");
+            $this->smtpCommand($socket, "RCPT TO:<{$to}>");
+            $this->smtpCommand($socket, "DATA");
+
+            // Build email content
+            $headers = "MIME-Version: 1.0\r\n";
+            $headers .= "Content-Type: text/html; charset=UTF-8\r\n";
+            $headers .= "From: {$this->from_name} <{$this->from_email}>\r\n";
+            $headers .= "To: {$to}\r\n";
+            $headers .= "Subject: {$subject}\r\n";
+            $headers .= "Date: " . date('r') . "\r\n";
+
+            $email_content = $headers . "\r\n" . $body . "\r\n.\r\n";
+            fwrite($socket, $email_content);
+            $response = fgets($socket);
+
+            // Close connection
+            $this->smtpCommand($socket, "QUIT");
+            fclose($socket);
+
+            // Log success
+            error_log("Email sent to $to: $subject (SMTP Success)");
+            return true;
+        } catch (Exception $e) {
+            error_log("Email send failed to $to: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Connect to SMTP server
+     */
+    private function connectToSMTP()
+    {
+        $errno = 0;
+        $errstr = '';
+
+        // Determine connection type
+        if ($this->smtp_encryption === 'ssl') {
+            $host = "ssl://{$this->smtp_host}";
+        } else {
+            $host = $this->smtp_host;
+        }
+
+        // Connect
+        $socket = @stream_socket_client(
+            "{$host}:{$this->smtp_port}",
+            $errno,
+            $errstr,
+            30,
+            STREAM_CLIENT_CONNECT
+        );
+
+        if (!$socket) {
+            error_log("SMTP connection failed: $errstr ($errno)");
+            return false;
+        }
+
+        // Read server greeting
+        $response = fgets($socket);
+        if (substr($response, 0, 3) !== '220') {
+            error_log("SMTP server did not respond with 220: $response");
+            fclose($socket);
+            return false;
+        }
+
+        return $socket;
+    }
+
+    /**
+     * Send SMTP command and verify response
+     */
+    private function smtpCommand($socket, $command, $expected_code = null)
+    {
+        fwrite($socket, $command . "\r\n");
+        $response = fgets($socket);
+
+        // Determine expected response code
+        if ($expected_code === null) {
+            if (strpos($command, 'EHLO') === 0 || strpos($command, 'HELO') === 0) {
+                $expected_code = '250';
+            } elseif (strpos($command, 'AUTH') === 0) {
+                $expected_code = '334';
+            } elseif (strpos($command, 'MAIL') === 0 || strpos($command, 'RCPT') === 0) {
+                $expected_code = '250';
+            } elseif (strpos($command, 'DATA') === 0) {
+                $expected_code = '354';
+            } elseif (strpos($command, 'STARTTLS') === 0) {
+                $expected_code = '220';
+            } elseif (strpos($command, 'QUIT') === 0) {
+                $expected_code = '221';
+            } else {
+                // For base64 encoded auth
+                $expected_code = '235'; // Auth success
+            }
+        }
+
+        // Check if command is base64 (password step in auth)
+        if (base64_decode($command, true) !== false && base64_encode(base64_decode($command)) === $command) {
+            // This might be the final auth step
+            if (substr($response, 0, 3) === '235') {
+                return $response; // Auth successful
+            }
+        }
+
+        // Verify response (allow both expected code and 250 for success)
+        $response_code = substr($response, 0, 3);
+        if ($response_code !== $expected_code && $response_code !== '250' && $response_code !== '235') {
+            throw new Exception("SMTP command failed: $command | Response: $response");
+        }
+
+        return $response;
     }
 }
