@@ -10,9 +10,32 @@ $pageTitle = 'Home';
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="description" content="Connect with skilled freelancers and find quality projects. Secure escrow payments and transparent dispute resolution.">
+    <meta name="theme-color" content="#667eea">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Jacob">
+
     <title>Jacob - Freelance Marketplace with Secure Escrow</title>
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json">
+
+    <!-- Icons for iOS -->
+    <link rel="apple-touch-icon" href="/assets/images/icons/icon-152x152.png">
+    <link rel="apple-touch-icon" sizes="192x192" href="/assets/images/icons/icon-192x192.png">
+    <link rel="apple-touch-icon" sizes="512x512" href="/assets/images/icons/icon-512x512.png">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" sizes="192x192" href="/assets/images/icons/icon-192x192.png">
+
+    <!-- Stylesheet -->
     <link rel="stylesheet" href="/assets/css/style.css">
+
+    <!-- PWA JavaScript -->
+    <script src="/assets/js/app.js" defer></script>
 </head>
 
 <body>
