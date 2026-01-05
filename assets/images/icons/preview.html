@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PWA Icon Preview</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+        background: #f5f5f5;
+      }
+      .icon-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 20px;
+        margin-top: 20px;
+      }
+      .icon-card {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        text-align: center;
+      }
+      .icon-card img {
+        max-width: 100%;
+        height: auto;
+        border: 1px solid #eee;
+        border-radius: 4px;
+      }
+      .icon-card p {
+        margin: 10px 0 0 0;
+        color: #666;
+        font-size: 14px;
+      }
+      h1 {
+        color: #333;
+      }
+      .svg-preview {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 40px;
+        border-radius: 16px;
+        margin-bottom: 30px;
+      }
+      .instructions {
+        background: #fff;
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        border-left: 4px solid #667eea;
+      }
+      code {
+        background: #f0f0f0;
+        padding: 2px 6px;
+        border-radius: 3px;
+        font-size: 13px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Jacob Marketplace PWA Icons</h1>
+
+    <div class="instructions">
+      <h2>Icon Generation Instructions</h2>
+      <p>
+        The icon source SVG has been created. To generate PNG icons in all
+        required sizes:
+      </p>
+      <ol>
+        <li>
+          <strong>Option 1 (Recommended):</strong> Install librsvg2-bin and run
+          the generation script: <br /><code
+            >sudo apt-get install librsvg2-bin</code
+          >
+          <br /><code
+            >cd /var/www/jacob.com/assets/images/icons &&
+            ./generate-icons.sh</code
+          >
+        </li>
+        <li>
+          <strong>Option 2:</strong> Use an online converter like
+          <a href="https://realfavicongenerator.net/" target="_blank"
+            >RealFaviconGenerator.net</a
+          >
+        </li>
+        <li>
+          <strong>Option 3:</strong> Manually convert using any graphics editor
+          (GIMP, Photoshop, etc.)
+        </li>
+      </ol>
+      <p>
+        <strong>Required sizes:</strong> 72×72, 96×96, 128×128, 144×144,
+        152×152, 192×192, 384×384, 512×512
+      </p>
+    </div>
+
+    <div class="svg-preview">
+      <img
+        src="icon-source.svg"
+        alt="Jacob Icon"
+        style="width: 200px; height: 200px; display: block; margin: 0 auto"
+      />
+    </div>
+
+    <h2>Icon Previews</h2>
+    <div class="icon-grid">
+      <div class="icon-card">
+        <img
+          src="icon-72x72.png"
+          alt="72x72"
+          onerror="this.src='icon-source.svg'; this.style.width='72px'"
+        />
+        <p>72×72 (Small)</p>
+      </div>
+      <div class="icon-card">
+        <img
+          src="icon-96x96.png"
+          alt="96x96"
+          onerror="this.src='icon-source.svg'; this.style.width='96px'"
+        />
+        <p>96×96</p>
+      </div>
+      <div class="icon-card">
+        <img
+          src="icon-128x128.png"
+          alt="128x128"
+          onerror="this.src='icon-source.svg'; this.style.width='128px'"
+        />
+        <p>128×128</p>
+      </div>
+      <div class="icon-card">
+        <img
+          src="icon-144x144.png"
+          alt="144x144"
+          onerror="this.src='icon-source.svg'; this.style.width='144px'"
+        />
+        <p>144×144</p>
+      </div>
+      <div class="icon-card">
+        <img
+          src="icon-152x152.png"
+          alt="152x152"
+          onerror="this.src='icon-source.svg'; this.style.width='152px'"
+        />
+        <p>152×152</p>
+      </div>
+      <div class="icon-card">
+        <img
+          src="icon-192x192.png"
+          alt="192x192"
+          onerror="this.src='icon-source.svg'; this.style.width='192px'"
+        />
+        <p>192×192 (Android)</p>
+      </div>
+      <div class="icon-card">
+        <img
+          src="icon-384x384.png"
+          alt="384x384"
+          onerror="this.src='icon-source.svg'; this.style.width='150px'"
+        />
+        <p>384×384</p>
+      </div>
+      <div class="icon-card">
+        <img
+          src="icon-512x512.png"
+          alt="512x512"
+          onerror="this.src='icon-source.svg'; this.style.width='150px'"
+        />
+        <p>512×512 (High-res)</p>
+      </div>
+    </div>
+
+    <div class="instructions" style="margin-top: 30px">
+      <h3>Next Steps</h3>
+      <p>
+        Once icons are generated, the PWA implementation will be complete. Users
+        can:
+      </p>
+      <ul>
+        <li>Install the app on mobile devices (Add to Home Screen)</li>
+        <li>Install on desktop browsers (Chrome, Edge)</li>
+        <li>Use the app offline (cached assets)</li>
+        <li>Receive a native app-like experience</li>
+      </ul>
+    </div>
+  </body>
+</html>

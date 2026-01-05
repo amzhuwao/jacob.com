@@ -3,9 +3,39 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo $pageTitle ?? 'Welcome'; ?></title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="description" content="Connect with skilled freelancers and find quality projects. Secure escrow payments and transparent dispute resolution.">
+    <meta name="theme-color" content="#667eea">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Jacob">
+
+    <title><?php echo $pageTitle ?? 'Welcome'; ?> - Jacob Marketplace</title>
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json">
+
+    <!-- Icons for iOS -->
+    <link rel="apple-touch-icon" href="/assets/images/icons/icon-152x152.png">
+    <link rel="apple-touch-icon" sizes="72x72" href="/assets/images/icons/icon-72x72.png">
+    <link rel="apple-touch-icon" sizes="96x96" href="/assets/images/icons/icon-96x96.png">
+    <link rel="apple-touch-icon" sizes="128x128" href="/assets/images/icons/icon-128x128.png">
+    <link rel="apple-touch-icon" sizes="144x144" href="/assets/images/icons/icon-144x144.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="/assets/images/icons/icon-152x152.png">
+    <link rel="apple-touch-icon" sizes="192x192" href="/assets/images/icons/icon-192x192.png">
+    <link rel="apple-touch-icon" sizes="384x384" href="/assets/images/icons/icon-384x384.png">
+    <link rel="apple-touch-icon" sizes="512x512" href="/assets/images/icons/icon-512x512.png">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" sizes="192x192" href="/assets/images/icons/icon-192x192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="/assets/images/icons/icon-512x512.png">
+
+    <!-- Stylesheet -->
     <link rel="stylesheet" href="/assets/css/style.css">
+
+    <!-- PWA JavaScript -->
+    <script src="/assets/js/app.js" defer></script>
 </head>
 
 <body>
