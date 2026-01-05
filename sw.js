@@ -6,14 +6,10 @@ const RUNTIME_CACHE = 'jacob-runtime-v1';
 
 // Assets to cache on install
 const STATIC_ASSETS = [
-  '/',
-  '/index.php',
   '/assets/css/style.css',
+  '/assets/js/app.js',
   '/assets/images/icons/icon-192x192.png',
-  '/assets/images/icons/icon-512x512.png',
-  '/manifest.json',
-  '/auth/login.php',
-  '/auth/register.php'
+  '/assets/images/icons/icon-512x512.png'
 ];
 
 // Install event - cache static assets
