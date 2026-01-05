@@ -9,7 +9,7 @@
 
 class EmailService
 {
-    private $from_email = 'noreply@jacob.com';
+    private $from_email = 'info@leonom.tech';
     private $from_name = 'Jacob Marketplace';
     private $pdo;
 
