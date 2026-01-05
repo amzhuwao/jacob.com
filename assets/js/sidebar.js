@@ -199,7 +199,11 @@ if (document.readyState === 'loading') {
     SidebarManager.init();
 }
 
-// Legacy function for backwards compatibility
-function toggleSidebar() {
+// Global function for onclick handlers (works even before init)
+window.toggleSidebar = function() {
+    // If manager not initialized yet, try to initialize
+    if (!SidebarManager.sidebar) {
+        SidebarManager.init();
+    }
     SidebarManager.toggle();
-}
+};
